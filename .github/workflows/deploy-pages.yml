@@ -1,0 +1,62 @@
+name: Deploy static site to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Prepare static site files
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          CLASS_ID: ${{ vars.CLASS_ID }}
+        run: |
+          rm -rf ./_site
+          mkdir -p ./_site
+          cp ./index.html ./_site/index.html
+          cp ./app.js ./_site/app.js
+          cp ./supabase-data.js ./_site/supabase-data.js
+          python - <<'PY'
+          import json, os
+          cfg = {
+            "SUPABASE_URL": os.getenv("SUPABASE_URL", ""),
+            "SUPABASE_ANON_KEY": os.getenv("SUPABASE_ANON_KEY", ""),
+            "CLASS_ID": os.getenv("CLASS_ID", "4C") or "4C",
+            "TEACHER_PASSWORD": ""
+          }
+          with open("./_site/config.js", "w", encoding="utf-8") as f:
+            f.write("window.APP_CONFIG = ")
+            f.write(json.dumps(cfg, ensure_ascii=False, indent=2))
+            f.write(";\\n")
+          PY
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./_site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
