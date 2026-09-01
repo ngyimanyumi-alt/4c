@@ -41,14 +41,15 @@
      - `CLASS_ID`（可選，預設 `4C`）
    - **Settings → Secrets and variables → Actions → Secrets**：
      - `SUPABASE_ANON_KEY`
-     - `TEACHER_PASSWORD`（可選，可留空）
-4. 推送到 `main` 後，workflow 會自動產生 `config.js` 並部署
+4. 推送到 `main` 後，workflow 會自動產生 `config.js` 並部署（GitHub Pages 版本固定停用老師密碼）
 
 ## 安全性與限制（務必閱讀）
 
 - 目前保留「學生模式 / 老師模式」UX。
 - `TEACHER_PASSWORD` 放在前端 JavaScript，**不是安全身份驗證**，只能防誤觸。
+- GitHub Pages workflow 會將 `TEACHER_PASSWORD` 固定為空字串，避免把任何「密碼」公開部署。
 - `schema.sql` 目前示範為匿名可寫入（方便公開 demo），任何人理論上都可改資料。
+- 為避免濫用，`schema.sql` 另外加入了待辦/連結的筆數上限與欄位長度限制，但這仍不等於完整安全防護。
 - 正式學校使用前，請改為：
   1. 啟用 **Supabase Auth**
   2. 將寫入 RLS policy 改為只允許已登入且有權限的使用者

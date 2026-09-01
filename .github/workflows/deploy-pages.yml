@@ -32,7 +32,6 @@ jobs:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           CLASS_ID: ${{ vars.CLASS_ID }}
-          TEACHER_PASSWORD: ${{ secrets.TEACHER_PASSWORD }}
         run: |
           rm -rf ./_site
           mkdir -p ./_site
@@ -45,7 +44,7 @@ jobs:
             "SUPABASE_URL": os.getenv("SUPABASE_URL", ""),
             "SUPABASE_ANON_KEY": os.getenv("SUPABASE_ANON_KEY", ""),
             "CLASS_ID": os.getenv("CLASS_ID", "4C") or "4C",
-            "TEACHER_PASSWORD": os.getenv("TEACHER_PASSWORD", "")
+            "TEACHER_PASSWORD": ""
           }
           with open("./_site/config.js", "w", encoding="utf-8") as f:
             f.write("window.APP_CONFIG = ")

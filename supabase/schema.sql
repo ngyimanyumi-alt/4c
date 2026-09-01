@@ -13,6 +13,7 @@ create table if not exists public.students (
   updated_at timestamptz not null default now(),
   constraint students_student_number_positive check (student_number > 0),
   constraint students_absent_days_non_negative check (absent_days >= 0),
+  constraint students_name_length check (char_length(name) between 1 and 50),
   constraint students_class_student_unique unique (class_id, student_number)
 );
 
@@ -35,7 +36,9 @@ create table if not exists public.todos (
   category text not null default '一般',
   completed boolean not null default false,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint todos_text_length check (char_length(text) between 1 and 200),
+  constraint todos_category_length check (char_length(category) between 1 and 40)
 );
 
 create table if not exists public.custom_links (
@@ -46,7 +49,10 @@ create table if not exists public.custom_links (
   icon text not null default '🔗',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint custom_links_url_format check (url ~ '^https?://')
+  constraint custom_links_url_format check (url ~ '^https?://'),
+  constraint custom_links_title_length check (char_length(title) between 1 and 100),
+  constraint custom_links_url_length check (char_length(url) <= 500),
+  constraint custom_links_icon_length check (char_length(icon) between 1 and 8)
 );
 
 create index if not exists idx_students_class on public.students (class_id, student_number);
@@ -60,6 +66,34 @@ language plpgsql
 as $$
 begin
   new.updated_at = now();
+  return new;
+end;
+$$;
+
+create or replace function public.enforce_demo_row_limit()
+returns trigger
+language plpgsql
+as $$
+declare
+  max_rows integer;
+  current_count integer;
+begin
+  if tg_table_name = 'todos' then
+    max_rows := 500;
+  elsif tg_table_name = 'custom_links' then
+    max_rows := 200;
+  else
+    return new;
+  end if;
+
+  execute format('select count(*) from public.%I where class_id = $1', tg_table_name)
+    into current_count
+    using new.class_id;
+
+  if current_count >= max_rows then
+    raise exception '超出 % 資料上限（% 筆）', tg_table_name, max_rows;
+  end if;
+
   return new;
 end;
 $$;
@@ -79,10 +113,20 @@ create trigger trg_todos_set_updated_at
 before update on public.todos
 for each row execute function public.set_updated_at();
 
+drop trigger if exists trg_todos_demo_row_limit on public.todos;
+create trigger trg_todos_demo_row_limit
+before insert on public.todos
+for each row execute function public.enforce_demo_row_limit();
+
 drop trigger if exists trg_custom_links_set_updated_at on public.custom_links;
 create trigger trg_custom_links_set_updated_at
 before update on public.custom_links
 for each row execute function public.set_updated_at();
+
+drop trigger if exists trg_custom_links_demo_row_limit on public.custom_links;
+create trigger trg_custom_links_demo_row_limit
+before insert on public.custom_links
+for each row execute function public.enforce_demo_row_limit();
 
 alter table public.students enable row level security;
 alter table public.duty_overrides enable row level security;
