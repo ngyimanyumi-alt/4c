@@ -97,6 +97,7 @@ const state = {
   todos: [],
   customLinks: [],
   isTeacher: false,
+  teacherAuthBusy: false,
   loading: false,
   provider: classDataApi.getProviderInfo()
 };
@@ -108,6 +109,7 @@ const els = {
   teacherPassword: document.getElementById("teacherPassword"),
   teacherModeBtn: document.getElementById("teacherModeBtn"),
   studentModeBtn: document.getElementById("studentModeBtn"),
+  teacherModeState: document.getElementById("teacherModeState"),
   themeSwitcher: document.getElementById("themeSwitcher"),
   dateDisplay: document.getElementById("dateDisplay"),
   dateTag: document.getElementById("dateTag"),
@@ -288,17 +290,49 @@ function ensureTeacherOrWarn() {
     return true;
   }
   setStatus("error", "目前是學生模式，不能修改共享資料。請先通過老師模式驗證。");
+  setTeacherModeState("error", "目前仍是學生模式，請先完成老師模式驗證。");
   return false;
+}
+
+function setTeacherModeState(type, text) {
+  const styles = {
+    info: "border-white/25 bg-white/10 text-white",
+    ok: "border-emerald-200/70 bg-emerald-50 text-emerald-800",
+    error: "border-rose-200/80 bg-rose-50 text-rose-800",
+    warn: "border-amber-200/80 bg-amber-50 text-amber-900"
+  };
+  els.teacherModeState.className = `rounded-xl border px-3 py-2 text-sm font-medium ${styles[type] || styles.info}`;
+  els.teacherModeState.textContent = text;
 }
 
 function updateModeUi() {
   els.modeText.textContent = state.isTeacher ? "老師模式" : "學生模式";
   const authReady = classDataApi.isTeacherAuthConfigured;
+  const authBusy = state.teacherAuthBusy;
 
-  els.teacherPassword.disabled = !authReady;
-  els.teacherModeBtn.disabled = !authReady;
-  els.teacherModeBtn.classList.toggle("opacity-60", !authReady);
-  els.teacherModeBtn.classList.toggle("cursor-not-allowed", !authReady);
+  els.teacherPassword.disabled = !authReady || state.isTeacher || authBusy;
+  els.teacherModeBtn.disabled = !authReady || state.isTeacher || authBusy;
+  els.studentModeBtn.disabled = !state.isTeacher || authBusy;
+  els.teacherModeBtn.classList.toggle("opacity-60", !authReady || state.isTeacher || authBusy);
+  els.teacherModeBtn.classList.toggle("cursor-not-allowed", !authReady || state.isTeacher || authBusy);
+  els.studentModeBtn.classList.toggle("opacity-60", !state.isTeacher || authBusy);
+  els.studentModeBtn.classList.toggle("cursor-not-allowed", !state.isTeacher || authBusy);
+  els.teacherModeBtn.innerHTML = authBusy
+    ? '<i class="fa-solid fa-spinner mr-2 animate-spin"></i>驗證中…'
+    : state.isTeacher
+      ? '<i class="fa-solid fa-circle-check mr-2"></i>老師模式已啟用'
+      : '<i class="fa-solid fa-user-tie mr-2"></i>啟用老師模式';
+
+  if (!authReady) {
+    setTeacherModeState("warn", "老師模式密碼尚未在部署 secret 設定，暫時只可用學生模式。");
+  } else if (authBusy) {
+    setTeacherModeState("info", "正在驗證老師模式，請稍候…");
+  } else if (state.isTeacher) {
+    setTeacherModeState("ok", "已啟用老師模式，老師專用功能現已開放。");
+  } else {
+    setTeacherModeState("info", "尚未驗證老師模式，老師專用功能會維持鎖定。");
+  }
+
   if (!authReady) {
     els.teacherPassword.value = "";
   }
@@ -717,28 +751,62 @@ els.themeSwitcher.addEventListener("click", (event) => {
 });
 
 els.teacherModeBtn.addEventListener("click", async () => {
-  if (!classDataApi.isTeacherAuthConfigured) {
-    setStatus("error", "老師模式驗證未設定，暫時不能切換老師模式。");
+  if (state.teacherAuthBusy) {
     return;
   }
+  if (!classDataApi.isTeacherAuthConfigured) {
+    setStatus("error", "老師模式驗證未設定，暫時不能切換老師模式。");
+    setTeacherModeState("warn", "尚未設定老師模式 secret，請在部署平台完成設定後再試。");
+    return;
+  }
+  const candidatePassword = els.teacherPassword.value.trim();
+  if (!candidatePassword) {
+    setStatus("error", "請先輸入老師模式密碼。");
+    setTeacherModeState("error", "未輸入老師模式密碼，請先輸入後再驗證。");
+    return;
+  }
+
+  state.teacherAuthBusy = true;
+  updateModeUi();
   try {
-    if (await classDataApi.verifyTeacherPassword(els.teacherPassword.value)) {
+    if (await classDataApi.verifyTeacherPassword(candidatePassword)) {
       state.isTeacher = true;
       els.teacherPassword.value = "";
+      state.teacherAuthBusy = false;
       renderAll();
       setStatus("ok", "已切換到老師模式。");
       return;
     }
-    setStatus("error", "老師密碼錯誤。");
-  } catch (error) {
-    setStatus("error", error.message || "老師模式驗證失敗。");
+    state.isTeacher = false;
+    setStatus("error", "老師模式驗證失敗，請再次確認後重試。");
+    setTeacherModeState("error", "驗證失敗，請再試一次。");
+  } catch {
+    state.isTeacher = false;
+    setStatus("error", "老師模式暫時無法驗證，請稍後重試。");
+    setTeacherModeState("error", "驗證服務暫時不可用，請稍後再試。");
+  } finally {
+    state.teacherAuthBusy = false;
+    if (!state.isTeacher) {
+      updateModeUi();
+    }
   }
 });
 
 els.studentModeBtn.addEventListener("click", () => {
+  if (state.teacherAuthBusy || !state.isTeacher) {
+    return;
+  }
   state.isTeacher = false;
   renderAll();
   setStatus("info", "已切換回學生模式。");
+});
+
+els.teacherPassword.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") {
+    return;
+  }
+  event.preventDefault();
+  els.teacherModeBtn.click();
 });
 
 els.prevDayBtn.addEventListener("click", () => {

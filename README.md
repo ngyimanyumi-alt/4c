@@ -53,6 +53,8 @@
 - `SUPABASE_URL`：例如 `https://your-project-id.supabase.co`
 - `CLASS_ID`：可選，預設 `4C`
 
+可先參考 repository 內的 `.env.example`（僅 placeholder，**不包含真實密碼**）整理要設定的鍵名。
+
 ### Repository Secrets
 
 到 **Settings → Secrets and variables → Actions → Secrets** 新增：
