@@ -4,177 +4,522 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>4C 班務管理</title>
+    <meta
+      name="description"
+      content="4C 班務管理 demo：值日、學生名單、提醒、常用連結、告假信與 Supabase 共享資料。"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkR4j8VYicR65iaqukcrH/3SLnFQ8+7bI4Bw=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"Noto Sans TC"', "sans-serif"]
+            },
+            boxShadow: {
+              dreamy: "0 24px 60px rgba(15, 23, 42, 0.15)"
+            }
+          }
+        }
+      };
+    </script>
     <style>
       :root {
         color-scheme: light;
-        font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+        --theme-primary: 236 72 153;
+        --theme-secondary: 244 114 182;
+        --theme-accent: 251 207 232;
+        --theme-soft: 253 242 248;
+        --theme-strong: 157 23 77;
       }
+
       body {
-        margin: 0;
-        padding: 1rem;
-        background: #f4f6fb;
-        color: #1f2a44;
+        font-family: "Noto Sans TC", sans-serif;
+        background:
+          radial-gradient(circle at top, rgba(var(--theme-accent), 0.8), transparent 38%),
+          linear-gradient(180deg, #fff9fc 0%, #fdf2f8 35%, #f8fafc 100%);
       }
-      .container {
-        max-width: 1000px;
-        margin: 0 auto;
+
+      .theme-card {
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid rgba(var(--theme-primary), 0.12);
+        backdrop-filter: blur(14px);
       }
-      h1 {
-        margin-top: 0;
-      }
-      .panel {
-        background: #fff;
-        border-radius: 12px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-      }
-      .row {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-        align-items: center;
-      }
-      input,
-      select,
-      button {
-        font: inherit;
-        padding: 0.45rem 0.6rem;
-        border-radius: 8px;
-        border: 1px solid #c7d0e5;
-      }
-      button {
-        background: #2f6fed;
+
+      .theme-btn.active {
+        background: rgb(var(--theme-primary));
         color: #fff;
-        border: none;
-        cursor: pointer;
+        border-color: rgb(var(--theme-primary));
+        box-shadow: 0 10px 28px rgba(var(--theme-primary), 0.28);
       }
-      button.secondary {
-        background: #6b7280;
+
+      .theme-gradient {
+        background: linear-gradient(
+          135deg,
+          rgba(var(--theme-primary), 0.96),
+          rgba(var(--theme-secondary), 0.9)
+        );
       }
-      button.danger {
-        background: #dc2626;
+
+      .soft-gradient {
+        background: linear-gradient(135deg, rgba(var(--theme-soft), 1), rgba(255, 255, 255, 0.94));
       }
-      button:disabled {
-        background: #9ca3af;
-        cursor: not-allowed;
+
+      .accent-ring {
+        border-color: rgba(var(--theme-primary), 0.15);
+        box-shadow: 0 10px 25px rgba(var(--theme-primary), 0.08);
       }
-      .list {
-        list-style: none;
-        padding: 0;
-        margin: 0.8rem 0 0;
+
+      .accent-text {
+        color: rgb(var(--theme-strong));
       }
-      .list li {
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 0.6rem;
-        margin-bottom: 0.5rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.5rem;
+
+      .accent-bg {
+        background-color: rgba(var(--theme-primary), 0.08);
+        color: rgb(var(--theme-strong));
       }
-      .muted {
-        color: #64748b;
-        font-size: 0.92rem;
+
+      .duty-card {
+        border: 1px solid rgba(var(--theme-primary), 0.12);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(var(--theme-soft), 0.84));
       }
-      #status {
-        min-height: 1.2rem;
-        margin-bottom: 0.75rem;
+
+      .holiday-pill {
+        background: rgba(var(--theme-primary), 0.12);
+        color: rgb(var(--theme-strong));
       }
-      #status.error {
-        color: #b91c1c;
+
+      .section-title::after {
+        content: "";
+        display: block;
+        width: 3rem;
+        height: 0.25rem;
+        margin-top: 0.5rem;
+        border-radius: 999px;
+        background: linear-gradient(
+          90deg,
+          rgba(var(--theme-primary), 1),
+          rgba(var(--theme-secondary), 0.75)
+        );
       }
-      #status.ok {
-        color: #166534;
-      }
-      #status.info {
-        color: #1d4ed8;
-      }
-      .done {
-        text-decoration: line-through;
-        color: #64748b;
-      }
-      .split {
-        display: grid;
-        gap: 1rem;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      }
-      a {
-        color: #1d4ed8;
+
+      .hidden-by-default[hidden] {
+        display: none !important;
       }
     </style>
   </head>
-  <body>
-    <div class="container">
-      <h1>4C 班務管理</h1>
-      <p class="muted">此網站使用 Supabase 雲端資料庫，所有人會看到同一份資料。</p>
+  <body class="min-h-screen text-slate-800">
+    <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <header class="theme-card theme-gradient mb-6 overflow-hidden rounded-[2rem] shadow-dreamy">
+        <div
+          class="grid gap-6 px-6 py-8 text-white sm:px-8 lg:grid-cols-[1.5fr_1fr] lg:px-10 lg:py-10"
+        >
+          <div class="space-y-4">
+            <span
+              class="inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-1 text-sm font-semibold"
+            >
+              <i class="fa-solid fa-sparkles"></i>
+              4C 班務管理 Demo
+            </span>
+            <div>
+              <h1 class="text-3xl font-black tracking-tight sm:text-4xl">4C 班務管理</h1>
+              <p class="mt-3 max-w-2xl text-sm leading-7 text-white/90 sm:text-base">
+                恢復完整主題介面、值日安排、提醒、常用連結、告假信與批量匯入。未設定
+                Supabase 時亦會顯示完整示範內容；設定後則自動改用共享雲端資料。
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-2" id="themeSwitcher" aria-label="主題切換">
+              <button
+                class="theme-btn active rounded-full border border-white/60 bg-white/90 px-4 py-2 text-sm font-semibold text-slate-800 transition"
+                data-theme="pink"
+                type="button"
+              >
+                <i class="fa-solid fa-heart mr-1"></i> 粉紅主題
+              </button>
+              <button
+                class="theme-btn rounded-full border border-white/60 bg-white/20 px-4 py-2 text-sm font-semibold text-white transition"
+                data-theme="sky"
+                type="button"
+              >
+                <i class="fa-solid fa-cloud mr-1"></i> 天空藍
+              </button>
+              <button
+                class="theme-btn rounded-full border border-white/60 bg-white/20 px-4 py-2 text-sm font-semibold text-white transition"
+                data-theme="violet"
+                type="button"
+              >
+                <i class="fa-solid fa-gem mr-1"></i> 紫羅蘭
+              </button>
+              <button
+                class="theme-btn rounded-full border border-white/60 bg-white/20 px-4 py-2 text-sm font-semibold text-white transition"
+                data-theme="emerald"
+                type="button"
+              >
+                <i class="fa-solid fa-leaf mr-1"></i> 翡翠綠
+              </button>
+            </div>
+          </div>
 
-      <div class="panel">
-        <div class="row">
-          <strong>模式：</strong>
-          <span id="modeText">學生模式</span>
-          <button id="studentModeBtn" class="secondary" type="button">切換學生模式</button>
+          <div class="rounded-[1.75rem] bg-white/14 p-5 shadow-lg ring-1 ring-white/20 backdrop-blur">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-white/75">模式</p>
+                <p id="modeText" class="mt-2 text-2xl font-bold">學生模式</p>
+              </div>
+              <span class="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white">
+                Demo only
+              </span>
+            </div>
+            <p class="mt-3 text-sm leading-6 text-white/85">
+              老師 demo 密碼固定為 <strong>23896299</strong>。此密碼只作基本防誤觸，
+              <strong>不是安全登入</strong>；正式用途請改用 Supabase Auth。
+            </p>
+            <div class="mt-4 flex flex-col gap-3">
+              <label class="text-sm font-medium text-white/90" for="teacherPassword">
+                老師模式密碼
+              </label>
+              <input
+                id="teacherPassword"
+                type="password"
+                class="w-full rounded-2xl border border-white/25 bg-white/90 px-4 py-3 text-slate-800 outline-none ring-0 placeholder:text-slate-400"
+                placeholder="輸入 23896299 進入老師模式"
+              />
+              <div class="flex flex-wrap gap-3">
+                <button
+                  id="teacherModeBtn"
+                  type="button"
+                  class="rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-800 shadow-lg transition hover:-translate-y-0.5"
+                >
+                  <i class="fa-solid fa-user-tie mr-2"></i>切換老師模式
+                </button>
+                <button
+                  id="studentModeBtn"
+                  type="button"
+                  class="rounded-2xl border border-white/30 bg-white/10 px-4 py-3 text-sm font-bold text-white transition hover:bg-white/20"
+                >
+                  <i class="fa-solid fa-user-graduate mr-2"></i>返回學生模式
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="row" style="margin-top: 0.5rem">
-          <input id="teacherPassword" type="password" placeholder="輸入老師密碼" />
-          <button id="teacherModeBtn" type="button">切換老師模式</button>
+      </header>
+
+      <section
+        id="connectionNotice"
+        class="theme-card accent-ring mb-6 rounded-[1.75rem] px-5 py-4 text-sm shadow-sm"
+      ></section>
+
+      <p
+        id="status"
+        class="mb-6 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm"
+        role="status"
+      >
+        載入中...
+      </p>
+
+      <div class="grid gap-6 xl:grid-cols-[1.35fr_0.95fr]">
+        <div class="space-y-6">
+          <section class="theme-card rounded-[1.75rem] p-5 shadow-sm sm:p-6">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 class="section-title text-2xl font-black text-slate-900">今日與值日安排</h2>
+                <p class="mt-2 text-sm leading-6 text-slate-600">
+                  顯示日期、香港假期/週末提示，以及值日生卡片。
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-3">
+                <button
+                  id="prevDayBtn"
+                  type="button"
+                  class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5"
+                >
+                  <i class="fa-solid fa-chevron-left mr-2"></i>上一天
+                </button>
+                <button
+                  id="todayBtn"
+                  type="button"
+                  class="rounded-2xl px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5"
+                  style="background: rgb(var(--theme-primary))"
+                >
+                  <i class="fa-solid fa-calendar-day mr-2"></i>回到今天
+                </button>
+                <button
+                  id="nextDayBtn"
+                  type="button"
+                  class="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5"
+                >
+                  下一天<i class="fa-solid fa-chevron-right ml-2"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="mt-5 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+              <div class="soft-gradient accent-ring rounded-[1.5rem] p-5">
+                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">日期</p>
+                <p id="dateDisplay" class="mt-3 text-3xl font-black text-slate-900"></p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <span id="dateTag" class="holiday-pill rounded-full px-3 py-1 text-xs font-bold">
+                    載入中
+                  </span>
+                  <span
+                    id="classTag"
+                    class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm"
+                  ></span>
+                </div>
+                <p id="dateHint" class="mt-4 text-sm leading-6 text-slate-600"></p>
+              </div>
+
+              <form id="dutyOverrideForm" class="theme-card accent-ring rounded-[1.5rem] p-5">
+                <div class="flex items-center justify-between gap-3">
+                  <h3 class="text-lg font-bold text-slate-900">值日偏移設定</h3>
+                  <span class="rounded-full accent-bg px-3 py-1 text-xs font-semibold">
+                    老師模式
+                  </span>
+                </div>
+                <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                  <input
+                    id="dutyDateInput"
+                    type="date"
+                    class="rounded-2xl border border-slate-200 px-4 py-3 outline-none"
+                    required
+                  />
+                  <select
+                    id="dutySlotInput"
+                    class="rounded-2xl border border-slate-200 px-4 py-3 outline-none"
+                  ></select>
+                  <input
+                    id="dutyOffsetInput"
+                    type="number"
+                    value="0"
+                    class="rounded-2xl border border-slate-200 px-4 py-3 outline-none"
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  class="mt-4 rounded-2xl px-4 py-3 text-sm font-bold text-white shadow-sm"
+                  style="background: rgb(var(--theme-primary))"
+                >
+                  <i class="fa-solid fa-wand-magic-sparkles mr-2"></i>儲存偏移
+                </button>
+                <ul id="dutyOverrideList" class="mt-4 space-y-3"></ul>
+              </form>
+            </div>
+
+            <div id="dutyCardGrid" class="mt-5 grid gap-4 md:grid-cols-3"></div>
+          </section>
+
+          <section class="theme-card rounded-[1.75rem] p-5 shadow-sm sm:p-6">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <h2 class="section-title text-2xl font-black text-slate-900">學生名單與缺席統計</h2>
+                <p class="mt-2 text-sm leading-6 text-slate-600">
+                  支援單個新增與批量匯入，並同步缺席統計。
+                </p>
+              </div>
+              <div
+                id="studentStats"
+                class="grid min-w-[240px] gap-3 sm:grid-cols-3 lg:min-w-[340px]"
+              ></div>
+            </div>
+
+            <div class="mt-5 grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+              <div class="space-y-5">
+                <form id="studentForm" class="grid gap-3 md:grid-cols-[0.7fr_1fr_auto]">
+                  <input
+                    id="studentNoInput"
+                    type="number"
+                    min="1"
+                    placeholder="學號"
+                    class="rounded-2xl border border-slate-200 px-4 py-3 outline-none"
+                    required
+                  />
+                  <input
+                    id="studentNameInput"
+                    type="text"
+                    placeholder="學生姓名"
+                    class="rounded-2xl border border-slate-200 px-4 py-3 outline-none"
+                    required
+                  />
+                  <button
+                    id="addStudentBtn"
+                    type="submit"
+                    class="rounded-2xl px-4 py-3 text-sm font-bold text-white shadow-sm"
+                    style="background: rgb(var(--theme-primary))"
+                  >
+                    新增學生
+                  </button>
+                </form>
+                <ul id="studentList" class="space-y-3"></ul>
+              </div>
+
+              <form id="bulkImportForm" class="soft-gradient accent-ring rounded-[1.5rem] p-5">
+                <div class="flex items-center justify-between gap-3">
+                  <h3 class="text-lg font-bold text-slate-900">批量匯入學生名單</h3>
+                  <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500">
+                    例：1 陳大文
+                  </span>
+                </div>
+                <p class="mt-3 text-sm leading-6 text-slate-600">
+                  每行一位學生，可輸入「學號 姓名」或「學號,姓名」。重覆學號會略過並提示。
+                </p>
+                <textarea
+                  id="bulkStudentInput"
+                  rows="10"
+                  class="mt-4 w-full rounded-[1.25rem] border border-slate-200 bg-white px-4 py-3 outline-none"
+                  placeholder="1 陳大文&#10;2 李小美&#10;3 王俊傑"
+                ></textarea>
+                <button
+                  type="submit"
+                  class="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm"
+                >
+                  <i class="fa-solid fa-file-import mr-2"></i>開始匯入
+                </button>
+                <p id="bulkImportFeedback" class="mt-3 text-sm text-slate-600"></p>
+              </form>
+            </div>
+          </section>
         </div>
-        <p class="muted" style="margin-bottom: 0">
-          注意：前端密碼僅為示範，不能當作安全登入。正式使用請改用 Supabase Auth。
-        </p>
-      </div>
 
-      <p id="status" class="info" role="status">載入中...</p>
+        <div class="space-y-6">
+          <section class="theme-card rounded-[1.75rem] p-5 shadow-sm sm:p-6">
+            <h2 class="section-title text-2xl font-black text-slate-900">提醒事項</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-600">
+              老師模式可新增、刪除及勾選完成；其他訪客會透過 Supabase 共享看到相同資料。
+            </p>
+            <form id="todoForm" class="mt-5 grid gap-3">
+              <input
+                id="todoTextInput"
+                type="text"
+                placeholder="新增提醒事項"
+                class="rounded-2xl border border-slate-200 px-4 py-3 outline-none"
+                required
+              />
+              <div class="grid gap-3 sm:grid-cols-[1fr_auto]">
+                <input
+                  id="todoCategoryInput"
+                  type="text"
+                  placeholder="分類（例如：功課 / 活動）"
+                  value="一般"
+                  class="rounded-2xl border border-slate-200 px-4 py-3 outline-none"
+                />
+                <button
+                  type="submit"
+                  class="rounded-2xl px-4 py-3 text-sm font-bold text-white shadow-sm"
+                  style="background: rgb(var(--theme-primary))"
+                >
+                  新增提醒
+                </button>
+              </div>
+            </form>
+            <ul id="todoList" class="mt-5 space-y-3"></ul>
+          </section>
 
-      <div class="split">
-        <section class="panel">
-          <h2>學生名單</h2>
-          <form id="studentForm" class="row">
-            <input id="studentNoInput" type="number" min="1" placeholder="學號" required />
-            <input id="studentNameInput" type="text" placeholder="姓名" required />
-            <button id="addStudentBtn" type="submit">新增學生</button>
-          </form>
-          <ul id="studentList" class="list"></ul>
-        </section>
+          <section class="theme-card rounded-[1.75rem] p-5 shadow-sm sm:p-6">
+            <h2 class="section-title text-2xl font-black text-slate-900">常用連結</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-600">
+              支援老師模式自訂連結，方便快速跳轉到常用班務網站。
+            </p>
+            <form id="linkForm" class="mt-5 grid gap-3">
+              <input
+                id="linkTitleInput"
+                type="text"
+                placeholder="標題"
+                class="rounded-2xl border border-slate-200 px-4 py-3 outline-none"
+                required
+              />
+              <input
+                id="linkUrlInput"
+                type="url"
+                placeholder="https://..."
+                class="rounded-2xl border border-slate-200 px-4 py-3 outline-none"
+                required
+              />
+              <div class="grid gap-3 sm:grid-cols-[0.7fr_auto]">
+                <input
+                  id="linkIconInput"
+                  type="text"
+                  placeholder="圖示（例如：🔗 / 🏫）"
+                  value="🔗"
+                  class="rounded-2xl border border-slate-200 px-4 py-3 outline-none"
+                />
+                <button
+                  type="submit"
+                  class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm"
+                >
+                  <i class="fa-solid fa-link mr-2"></i>新增連結
+                </button>
+              </div>
+            </form>
+            <ul id="linkList" class="mt-5 space-y-3"></ul>
+          </section>
 
-        <section class="panel">
-          <h2>值日安排（今天）</h2>
-          <p class="muted" id="todayLabel"></p>
-          <ul id="dutyTodayList" class="list"></ul>
-
-          <h3>值日偏移設定</h3>
-          <form id="dutyOverrideForm" class="row">
-            <input id="dutyDateInput" type="date" required />
-            <select id="dutySlotInput"></select>
-            <input id="dutyOffsetInput" type="number" value="0" required />
-            <button type="submit">儲存偏移</button>
-          </form>
-          <ul id="dutyOverrideList" class="list"></ul>
-        </section>
-      </div>
-
-      <div class="split">
-        <section class="panel">
-          <h2>待辦 / 提醒</h2>
-          <form id="todoForm" class="row">
-            <input id="todoTextInput" type="text" placeholder="新增提醒事項" required />
-            <input id="todoCategoryInput" type="text" placeholder="分類（例如：功課）" value="一般" />
-            <button type="submit">新增待辦</button>
-          </form>
-          <ul id="todoList" class="list"></ul>
-        </section>
-
-        <section class="panel">
-          <h2>自訂連結</h2>
-          <form id="linkForm" class="row">
-            <input id="linkTitleInput" type="text" placeholder="標題" required />
-            <input id="linkUrlInput" type="url" placeholder="https://..." required />
-            <input id="linkIconInput" type="text" placeholder="圖示（可選）" value="🔗" />
-            <button type="submit">新增連結</button>
-          </form>
-          <ul id="linkList" class="list"></ul>
-        </section>
+          <section class="theme-card rounded-[1.75rem] p-5 shadow-sm sm:p-6">
+            <h2 class="section-title text-2xl font-black text-slate-900">告假信生成器</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-600">
+              適合快速產生家長或學生可再微調的中文告假信內容。
+            </p>
+            <form id="leaveLetterForm" class="mt-5 grid gap-3">
+              <input
+                id="leaveStudentInput"
+                type="text"
+                placeholder="學生姓名"
+                class="rounded-2xl border border-slate-200 px-4 py-3 outline-none"
+                required
+              />
+              <div class="grid gap-3 sm:grid-cols-2">
+                <input
+                  id="leaveStartInput"
+                  type="date"
+                  class="rounded-2xl border border-slate-200 px-4 py-3 outline-none"
+                  required
+                />
+                <input
+                  id="leaveEndInput"
+                  type="date"
+                  class="rounded-2xl border border-slate-200 px-4 py-3 outline-none"
+                  required
+                />
+              </div>
+              <input
+                id="leaveReasonInput"
+                type="text"
+                placeholder="原因（例如：身體不適 / 家庭事務）"
+                class="rounded-2xl border border-slate-200 px-4 py-3 outline-none"
+                required
+              />
+              <button
+                type="submit"
+                class="rounded-2xl px-4 py-3 text-sm font-bold text-white shadow-sm"
+                style="background: rgb(var(--theme-primary))"
+              >
+                <i class="fa-solid fa-envelope-open-text mr-2"></i>生成告假信
+              </button>
+            </form>
+            <textarea
+              id="leaveLetterOutput"
+              rows="10"
+              readonly
+              class="mt-5 hidden-by-default w-full rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-7 text-slate-700 outline-none"
+              hidden
+            ></textarea>
+          </section>
+        </div>
       </div>
     </div>
 
