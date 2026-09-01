@@ -1,6 +1,9 @@
-const DEMO_TEACHER_PASSWORD = "23896299";
 const DEFAULT_CLASS_ID = "4C";
 const rawConfig = window.APP_CONFIG || {};
+const DEMO_TEACHER_PASSWORD =
+  typeof rawConfig.TEACHER_PASSWORD === "string" && rawConfig.TEACHER_PASSWORD.trim()
+    ? rawConfig.TEACHER_PASSWORD.trim()
+    : "23896299";
 const candidateClassId = typeof rawConfig.CLASS_ID === "string" ? rawConfig.CLASS_ID.trim() : "";
 const safeClassId = /^[A-Za-z0-9_-]{1,32}$/.test(candidateClassId)
   ? candidateClassId
