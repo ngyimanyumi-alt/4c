@@ -25,7 +25,7 @@
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY`
    - `CLASS_ID`（預設 `4C`）
-   - `TEACHER_PASSWORD`（僅示範用）
+   - `TEACHER_PASSWORD`（僅示範用；留空會停用老師模式切換）
 
 ⚠️ 請勿放入 service-role key 或任何私密金鑰。
 

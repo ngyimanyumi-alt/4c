@@ -158,7 +158,7 @@ export function subscribeToChanges(onChange) {
     return () => {};
   }
   const filter = `class_id=eq.${CLASS_FILTER.class_id}`;
-  const channel = supabaseClient.channel("class-4c-updates");
+  const channel = supabaseClient.channel(`class-${CLASS_FILTER.class_id}-updates`);
 
   ["students", "duty_overrides", "todos", "custom_links"].forEach((table) => {
     channel.on(
