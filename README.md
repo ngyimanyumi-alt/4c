@@ -20,7 +20,7 @@
 ## 2) 設定前端連線
 
 1. 複製設定檔：
-   - 將 `/config.example.js` 複製成 `/config.js`（如果專案已有 `config.js`，直接修改即可）。
+   - 將 `/config.example.js` 複製成 `/config.js` 後再填值（`config.js` 已在 `.gitignore`，不會被提交）。
 2. 在 `config.js` 填入：
    - `SUPABASE_URL`
    - `SUPABASE_ANON_KEY`
@@ -35,7 +35,14 @@
 
 1. 到 GitHub Repo → **Settings** → **Pages**
 2. Source 選擇 **GitHub Actions**
-3. 推送到 `main` 後，workflow 會自動部署
+3. 在 Repo 設定：
+   - **Settings → Secrets and variables → Actions → Variables**：
+     - `SUPABASE_URL`
+     - `CLASS_ID`（可選，預設 `4C`）
+   - **Settings → Secrets and variables → Actions → Secrets**：
+     - `SUPABASE_ANON_KEY`
+     - `TEACHER_PASSWORD`（可選，可留空）
+4. 推送到 `main` 後，workflow 會自動產生 `config.js` 並部署
 
 ## 安全性與限制（務必閱讀）
 

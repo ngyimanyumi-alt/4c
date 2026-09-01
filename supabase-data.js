@@ -4,15 +4,15 @@ const configError =
     ? "尚未設定 Supabase，請先編輯 config.js 的 SUPABASE_URL 與 SUPABASE_ANON_KEY。"
     : "";
 
-const supabaseClient =
-  !configError &&
-  window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false
-    }
-  });
+const supabaseClient = configError
+  ? null
+  : window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+      }
+    });
 
 const CLASS_FILTER = { class_id: CLASS_ID || "4C" };
 
