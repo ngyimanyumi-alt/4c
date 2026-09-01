@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>4C 班務管理</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 1rem;
+        background: #f4f6fb;
+        color: #1f2a44;
+      }
+      .container {
+        max-width: 1000px;
+        margin: 0 auto;
+      }
+      h1 {
+        margin-top: 0;
+      }
+      .panel {
+        background: #fff;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      }
+      .row {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      input,
+      select,
+      button {
+        font: inherit;
+        padding: 0.45rem 0.6rem;
+        border-radius: 8px;
+        border: 1px solid #c7d0e5;
+      }
+      button {
+        background: #2f6fed;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #6b7280;
+      }
+      button.danger {
+        background: #dc2626;
+      }
+      button:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+      }
+      .list {
+        list-style: none;
+        padding: 0;
+        margin: 0.8rem 0 0;
+      }
+      .list li {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 0.6rem;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+      }
+      .muted {
+        color: #64748b;
+        font-size: 0.92rem;
+      }
+      #status {
+        min-height: 1.2rem;
+        margin-bottom: 0.75rem;
+      }
+      #status.error {
+        color: #b91c1c;
+      }
+      #status.ok {
+        color: #166534;
+      }
+      #status.info {
+        color: #1d4ed8;
+      }
+      .done {
+        text-decoration: line-through;
+        color: #64748b;
+      }
+      .split {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      }
+      a {
+        color: #1d4ed8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>4C 班務管理</h1>
+      <p class="muted">此網站使用 Supabase 雲端資料庫，所有人會看到同一份資料。</p>
+
+      <div class="panel">
+        <div class="row">
+          <strong>模式：</strong>
+          <span id="modeText">學生模式</span>
+          <button id="studentModeBtn" class="secondary" type="button">切換學生模式</button>
+        </div>
+        <div class="row" style="margin-top: 0.5rem">
+          <input id="teacherPassword" type="password" placeholder="輸入老師密碼" />
+          <button id="teacherModeBtn" type="button">切換老師模式</button>
+        </div>
+        <p class="muted" style="margin-bottom: 0">
+          注意：前端密碼僅為示範，不能當作安全登入。正式使用請改用 Supabase Auth。
+        </p>
+      </div>
+
+      <p id="status" class="info" role="status">載入中...</p>
+
+      <div class="split">
+        <section class="panel">
+          <h2>學生名單</h2>
+          <form id="studentForm" class="row">
+            <input id="studentNoInput" type="number" min="1" placeholder="學號" required />
+            <input id="studentNameInput" type="text" placeholder="姓名" required />
+            <button id="addStudentBtn" type="submit">新增學生</button>
+          </form>
+          <ul id="studentList" class="list"></ul>
+        </section>
+
+        <section class="panel">
+          <h2>值日安排（今天）</h2>
+          <p class="muted" id="todayLabel"></p>
+          <ul id="dutyTodayList" class="list"></ul>
+
+          <h3>值日偏移設定</h3>
+          <form id="dutyOverrideForm" class="row">
+            <input id="dutyDateInput" type="date" required />
+            <select id="dutySlotInput"></select>
+            <input id="dutyOffsetInput" type="number" value="0" required />
+            <button type="submit">儲存偏移</button>
+          </form>
+          <ul id="dutyOverrideList" class="list"></ul>
+        </section>
+      </div>
+
+      <div class="split">
+        <section class="panel">
+          <h2>待辦 / 提醒</h2>
+          <form id="todoForm" class="row">
+            <input id="todoTextInput" type="text" placeholder="新增提醒事項" required />
+            <input id="todoCategoryInput" type="text" placeholder="分類（例如：功課）" value="一般" />
+            <button type="submit">新增待辦</button>
+          </form>
+          <ul id="todoList" class="list"></ul>
+        </section>
+
+        <section class="panel">
+          <h2>自訂連結</h2>
+          <form id="linkForm" class="row">
+            <input id="linkTitleInput" type="text" placeholder="標題" required />
+            <input id="linkUrlInput" type="url" placeholder="https://..." required />
+            <input id="linkIconInput" type="text" placeholder="圖示（可選）" value="🔗" />
+            <button type="submit">新增連結</button>
+          </form>
+          <ul id="linkList" class="list"></ul>
+        </section>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./config.js"></script>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
