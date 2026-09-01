@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHash, webcrypto } from 'node:crypto';
+import { webcrypto } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -39,7 +39,7 @@ test('teacher password is not hardcoded or exposed in frontend-visible files', (
 
 test('teacher auth flow verifies success/failure by hash and provider info does not leak password data', async () => {
   const password = 'safe-teacher-password';
-  const hash = createHash('sha256').update(password).digest('hex');
+  const hash = '9f5ac80ca0db21415a13f4ed10675e919d3b86a13474444449bc7e84bdf20c09';
 
   global.window = {
     APP_CONFIG: {
