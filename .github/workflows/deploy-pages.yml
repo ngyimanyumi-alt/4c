@@ -32,6 +32,7 @@ jobs:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           CLASS_ID: ${{ vars.CLASS_ID }}
+          TEACHER_MODE_PASSWORD: ${{ secrets.TEACHER_MODE_PASSWORD }}
         run: |
           rm -rf ./_site
           mkdir -p ./_site
@@ -39,12 +40,13 @@ jobs:
           cp ./app.js ./_site/app.js
           cp ./supabase-data.js ./_site/supabase-data.js
           python - <<'PY'
-          import json, os
+          import hashlib, json, os
+          teacher_password = (os.getenv("TEACHER_MODE_PASSWORD") or "").strip()
           cfg = {
             "SUPABASE_URL": os.getenv("SUPABASE_URL", ""),
             "SUPABASE_ANON_KEY": os.getenv("SUPABASE_ANON_KEY", ""),
             "CLASS_ID": os.getenv("CLASS_ID", "4C") or "4C",
-            "TEACHER_PASSWORD": "23896299"
+            "TEACHER_PASSWORD_HASH": hashlib.sha256(teacher_password.encode("utf-8")).hexdigest() if teacher_password else ""
           }
           with open("./_site/config.js", "w", encoding="utf-8") as f:
             f.write("window.APP_CONFIG = ")

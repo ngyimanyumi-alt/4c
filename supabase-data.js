@@ -1,9 +1,12 @@
 const DEFAULT_CLASS_ID = "4C";
 const rawConfig = window.APP_CONFIG || {};
-const DEMO_TEACHER_PASSWORD =
-  typeof rawConfig.TEACHER_PASSWORD === "string" && rawConfig.TEACHER_PASSWORD.trim()
-    ? rawConfig.TEACHER_PASSWORD.trim()
-    : "23896299";
+const candidateTeacherPasswordHash =
+  typeof rawConfig.TEACHER_PASSWORD_HASH === "string"
+    ? rawConfig.TEACHER_PASSWORD_HASH.trim().toLowerCase()
+    : "";
+const TEACHER_PASSWORD_HASH = /^[a-f0-9]{64}$/.test(candidateTeacherPasswordHash)
+  ? candidateTeacherPasswordHash
+  : "";
 const candidateClassId = typeof rawConfig.CLASS_ID === "string" ? rawConfig.CLASS_ID.trim() : "";
 const safeClassId = /^[A-Za-z0-9_-]{1,32}$/.test(candidateClassId)
   ? candidateClassId
@@ -87,7 +90,7 @@ function mapDutyOverrideRow(row) {
 const providerInfo = {
   mode: "demo",
   classId: safeClassId,
-  teacherPassword: DEMO_TEACHER_PASSWORD,
+  teacherAuthConfigured: Boolean(TEACHER_PASSWORD_HASH),
   message:
     "未設定 Supabase，現正顯示完整示範資料。設定好 GitHub Actions Variables / Secrets 並重新部署後，網站會自動改用共享雲端資料。",
   configured: Boolean(SUPABASE_URL && SUPABASE_ANON_KEY),
@@ -140,6 +143,36 @@ function sortLinks(list) {
 
 function sortOffsets(list) {
   return [...list].sort((a, b) => a.date.localeCompare(b.date) || a.slot.localeCompare(b.slot));
+}
+
+function timingSafeEqualHex(left, right) {
+  if (left.length !== right.length) {
+    return false;
+  }
+  let result = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    result |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+  return result === 0;
+}
+
+async function hashSha256(text) {
+  if (!window.crypto || !window.crypto.subtle || typeof window.TextEncoder !== "function") {
+    throw new Error("目前裝置不支援安全密碼驗證。");
+  }
+  const bytes = new TextEncoder().encode(text);
+  const digest = await window.crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function verifyTeacherPassword(password) {
+  if (!TEACHER_PASSWORD_HASH) {
+    return false;
+  }
+  const candidate = await hashSha256(String(password || ""));
+  return timingSafeEqualHex(candidate, TEACHER_PASSWORD_HASH);
 }
 
 async function run(queryFactory, errorPrefix) {
@@ -444,7 +477,8 @@ async function deleteLink(id) {
 
 export const classDataApi = {
   classId: safeClassId,
-  teacherPassword: DEMO_TEACHER_PASSWORD,
+  isTeacherAuthConfigured: Boolean(TEACHER_PASSWORD_HASH),
+  verifyTeacherPassword,
   getProviderInfo() {
     return { ...providerInfo };
   },
