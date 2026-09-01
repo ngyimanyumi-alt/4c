@@ -44,7 +44,7 @@ jobs:
             "SUPABASE_URL": os.getenv("SUPABASE_URL", ""),
             "SUPABASE_ANON_KEY": os.getenv("SUPABASE_ANON_KEY", ""),
             "CLASS_ID": os.getenv("CLASS_ID", "4C") or "4C",
-            "TEACHER_PASSWORD": ""
+            "TEACHER_PASSWORD": "23896299"
           }
           with open("./_site/config.js", "w", encoding="utf-8") as f:
             f.write("window.APP_CONFIG = ")

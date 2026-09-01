@@ -1,40 +1,136 @@
 import { classDataApi, subscribeToChanges } from "./supabase-data.js";
 
-const dutySlots = ["早會", "黑板", "地面"];
-const dutySlotInput = document.getElementById("dutySlotInput");
-dutySlots.forEach((slot) => {
-  const option = document.createElement("option");
-  option.value = slot;
-  option.textContent = slot;
-  dutySlotInput.append(option);
-});
+const dutySlots = [
+  { key: "早會", icon: "fa-sun", description: "早上問好、點名與班務提示" },
+  { key: "黑板", icon: "fa-chalkboard", description: "檢查黑板、粉筆與板擦" },
+  { key: "地面", icon: "fa-broom", description: "留意地面整潔與座位周邊" }
+];
+
+const themes = {
+  pink: {
+    primary: "236 72 153",
+    secondary: "244 114 182",
+    accent: "251 207 232",
+    soft: "253 242 248",
+    strong: "157 23 77"
+  },
+  sky: {
+    primary: "14 165 233",
+    secondary: "56 189 248",
+    accent: "186 230 253",
+    soft: "240 249 255",
+    strong: "12 74 110"
+  },
+  violet: {
+    primary: "139 92 246",
+    secondary: "167 139 250",
+    accent: "221 214 254",
+    soft: "245 243 255",
+    strong: "76 29 149"
+  },
+  emerald: {
+    primary: "16 185 129",
+    secondary: "52 211 153",
+    accent: "167 243 208",
+    soft: "236 253 245",
+    strong: "6 95 70"
+  }
+};
+
+const hongKongHolidays = {
+  "2025-01-01": "元旦",
+  "2025-01-29": "農曆年初一",
+  "2025-01-30": "農曆年初二",
+  "2025-01-31": "農曆年初三",
+  "2025-04-04": "清明節",
+  "2025-04-18": "耶穌受難節",
+  "2025-04-19": "耶穌受難節翌日",
+  "2025-04-21": "復活節星期一",
+  "2025-05-01": "勞動節",
+  "2025-05-05": "佛誕",
+  "2025-05-31": "端午節",
+  "2025-07-01": "香港特別行政區成立紀念日",
+  "2025-10-01": "國慶日",
+  "2025-10-07": "中秋節翌日",
+  "2025-10-29": "重陽節",
+  "2025-12-25": "聖誕節",
+  "2025-12-26": "聖誕節後第一個工作天",
+  "2026-01-01": "元旦",
+  "2026-02-17": "農曆年初一",
+  "2026-02-18": "農曆年初二",
+  "2026-02-19": "農曆年初三",
+  "2026-04-03": "耶穌受難節",
+  "2026-04-04": "耶穌受難節翌日",
+  "2026-04-06": "清明節翌日",
+  "2026-04-07": "復活節星期一翌日",
+  "2026-05-01": "勞動節",
+  "2026-05-25": "佛誕翌日",
+  "2026-06-19": "端午節",
+  "2026-07-01": "香港特別行政區成立紀念日",
+  "2026-09-26": "中秋節翌日",
+  "2026-10-01": "國慶日",
+  "2026-10-19": "重陽節翌日",
+  "2026-12-25": "聖誕節",
+  "2026-12-26": "聖誕節後第一個工作天",
+  "2027-01-01": "元旦",
+  "2027-02-08": "農曆年初三",
+  "2027-02-09": "農曆年初四",
+  "2027-03-26": "耶穌受難節",
+  "2027-03-27": "耶穌受難節翌日",
+  "2027-03-29": "復活節星期一",
+  "2027-04-05": "清明節",
+  "2027-05-03": "勞動節翌日",
+  "2027-05-13": "佛誕",
+  "2027-06-09": "端午節",
+  "2027-07-01": "香港特別行政區成立紀念日",
+  "2027-09-16": "中秋節翌日",
+  "2027-10-01": "國慶日",
+  "2027-10-08": "重陽節",
+  "2027-12-27": "聖誕節後第一個工作天"
+};
 
 const state = {
-  students: [],
-  dutyOverrides: [],
+  theme: "pink",
+  selectedDate: formatDateValue(new Date()),
+  studentList: [],
+  manualOffsets: [],
   todos: [],
-  links: [],
+  customLinks: [],
   isTeacher: false,
-  loading: false
+  loading: false,
+  provider: classDataApi.getProviderInfo()
 };
 
 const els = {
+  connectionNotice: document.getElementById("connectionNotice"),
   status: document.getElementById("status"),
   modeText: document.getElementById("modeText"),
   teacherPassword: document.getElementById("teacherPassword"),
   teacherModeBtn: document.getElementById("teacherModeBtn"),
   studentModeBtn: document.getElementById("studentModeBtn"),
+  themeSwitcher: document.getElementById("themeSwitcher"),
+  dateDisplay: document.getElementById("dateDisplay"),
+  dateTag: document.getElementById("dateTag"),
+  classTag: document.getElementById("classTag"),
+  dateHint: document.getElementById("dateHint"),
+  prevDayBtn: document.getElementById("prevDayBtn"),
+  todayBtn: document.getElementById("todayBtn"),
+  nextDayBtn: document.getElementById("nextDayBtn"),
+  dutyCardGrid: document.getElementById("dutyCardGrid"),
+  dutyOverrideForm: document.getElementById("dutyOverrideForm"),
+  dutyDateInput: document.getElementById("dutyDateInput"),
+  dutySlotInput: document.getElementById("dutySlotInput"),
+  dutyOffsetInput: document.getElementById("dutyOffsetInput"),
+  dutyOverrideList: document.getElementById("dutyOverrideList"),
+  studentStats: document.getElementById("studentStats"),
   studentForm: document.getElementById("studentForm"),
   studentNoInput: document.getElementById("studentNoInput"),
   studentNameInput: document.getElementById("studentNameInput"),
+  addStudentBtn: document.getElementById("addStudentBtn"),
   studentList: document.getElementById("studentList"),
-  todayLabel: document.getElementById("todayLabel"),
-  dutyTodayList: document.getElementById("dutyTodayList"),
-  dutyOverrideForm: document.getElementById("dutyOverrideForm"),
-  dutyDateInput: document.getElementById("dutyDateInput"),
-  dutySlotInput,
-  dutyOffsetInput: document.getElementById("dutyOffsetInput"),
-  dutyOverrideList: document.getElementById("dutyOverrideList"),
+  bulkImportForm: document.getElementById("bulkImportForm"),
+  bulkStudentInput: document.getElementById("bulkStudentInput"),
+  bulkImportFeedback: document.getElementById("bulkImportFeedback"),
   todoForm: document.getElementById("todoForm"),
   todoTextInput: document.getElementById("todoTextInput"),
   todoCategoryInput: document.getElementById("todoCategoryInput"),
@@ -43,12 +139,39 @@ const els = {
   linkTitleInput: document.getElementById("linkTitleInput"),
   linkUrlInput: document.getElementById("linkUrlInput"),
   linkIconInput: document.getElementById("linkIconInput"),
-  linkList: document.getElementById("linkList")
+  linkList: document.getElementById("linkList"),
+  leaveLetterForm: document.getElementById("leaveLetterForm"),
+  leaveStudentInput: document.getElementById("leaveStudentInput"),
+  leaveStartInput: document.getElementById("leaveStartInput"),
+  leaveEndInput: document.getElementById("leaveEndInput"),
+  leaveReasonInput: document.getElementById("leaveReasonInput"),
+  leaveLetterOutput: document.getElementById("leaveLetterOutput")
 };
 
-function setStatus(type, text) {
-  els.status.className = type;
-  els.status.textContent = text;
+dutySlots.forEach((slot) => {
+  const option = document.createElement("option");
+  option.value = slot.key;
+  option.textContent = slot.key;
+  els.dutySlotInput.append(option);
+});
+
+function pad(value) {
+  return String(value).padStart(2, "0");
+}
+
+function formatDateValue(date) {
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function parseDateValue(value) {
+  const [year, month, day] = String(value).split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function addDays(value, days) {
+  const date = parseDateValue(value);
+  date.setDate(date.getDate() + days);
+  return formatDateValue(date);
 }
 
 function escapeHtml(value) {
@@ -72,271 +195,613 @@ function safeUrl(url) {
   return "#";
 }
 
-function updateModeUi() {
-  els.modeText.textContent = state.isTeacher ? "老師模式" : "學生模式";
-  const disabled = !state.isTeacher;
+function setStatus(type, text) {
+  const styles = {
+    info: "border-sky-200 bg-sky-50 text-sky-700",
+    ok: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    error: "border-rose-200 bg-rose-50 text-rose-700"
+  };
+  els.status.className = `mb-6 rounded-2xl border px-4 py-3 text-sm shadow-sm ${styles[type] || styles.info}`;
+  els.status.textContent = text;
+}
 
-  [
-    "studentNoInput",
-    "studentNameInput",
-    "addStudentBtn",
-    "dutyDateInput",
-    "dutySlotInput",
-    "dutyOffsetInput",
-    "todoTextInput",
-    "todoCategoryInput",
-    "linkTitleInput",
-    "linkUrlInput",
-    "linkIconInput"
-  ].forEach((id) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.disabled = disabled;
-    }
-  });
+function applyTheme(themeName) {
+  const theme = themes[themeName] || themes.pink;
+  state.theme = themeName in themes ? themeName : "pink";
+  document.documentElement.style.setProperty("--theme-primary", theme.primary);
+  document.documentElement.style.setProperty("--theme-secondary", theme.secondary);
+  document.documentElement.style.setProperty("--theme-accent", theme.accent);
+  document.documentElement.style.setProperty("--theme-soft", theme.soft);
+  document.documentElement.style.setProperty("--theme-strong", theme.strong);
 
-  [els.studentForm, els.dutyOverrideForm, els.todoForm, els.linkForm].forEach((form) => {
-    const submitButton = form.querySelector('button[type="submit"]');
-    if (submitButton) {
-      submitButton.disabled = disabled;
-    }
+  els.themeSwitcher.querySelectorAll("[data-theme]").forEach((button) => {
+    const isActive = button.dataset.theme === state.theme;
+    button.classList.toggle("active", isActive);
+    button.classList.toggle("bg-white/20", !isActive);
+    button.classList.toggle("text-white", !isActive);
+    button.classList.toggle("bg-white/90", isActive);
+    button.classList.toggle("text-slate-800", isActive);
   });
+}
+
+function getDayInfo(dateValue) {
+  const date = parseDateValue(dateValue);
+  const weekday = date.toLocaleDateString("zh-HK", { weekday: "long" });
+  const holiday = hongKongHolidays[dateValue];
+  const day = date.getDay();
+  const isWeekend = day === 0 || day === 6;
+  const labels = [];
+
+  if (holiday) {
+    labels.push(`香港假期：${holiday}`);
+  }
+  if (isWeekend) {
+    labels.push(day === 6 ? "星期六" : "星期日");
+  }
+
+  return {
+    fullLabel: date.toLocaleDateString("zh-HK", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      weekday: "long"
+    }),
+    weekday,
+    holiday,
+    isWeekend,
+    tag: holiday || (isWeekend ? "週末" : "上課日"),
+    hint:
+      labels.length > 0
+        ? `${labels.join("・")}，請留意是否需要調整值日或提交告假。`
+        : "今天不是香港公眾假期，按一般上課日安排值日即可。"
+  };
+}
+
+function getOverride(dateValue, slot) {
+  return state.manualOffsets.find((item) => item.date === dateValue && item.slot === slot) || null;
+}
+
+function getDutyStudent(slot, dateValue) {
+  if (!state.studentList.length) {
+    return "（未有學生）";
+  }
+
+  const slotIndex = dutySlots.findIndex((item) => item.key === slot);
+  const currentDate = parseDateValue(dateValue);
+  const referenceDate = new Date(2026, 0, 1);
+  const dayOffset = Math.floor((currentDate - referenceDate) / (1000 * 60 * 60 * 24));
+  const override = getOverride(dateValue, slot);
+  const customOffset = override ? Number(override.offset) : 0;
+  const index =
+    ((dayOffset + slotIndex + customOffset) % state.studentList.length + state.studentList.length) %
+    state.studentList.length;
+
+  return state.studentList[index].name;
 }
 
 function ensureTeacherOrWarn() {
   if (state.isTeacher) {
     return true;
   }
-  setStatus("error", "目前是學生模式，不能修改資料。請先切換老師模式。");
+  setStatus("error", "目前是學生模式，不能修改共享資料。請先輸入 demo 密碼切換老師模式。");
   return false;
 }
 
-function formatDate(date = new Date()) {
-  return date.toISOString().slice(0, 10);
-}
+function updateModeUi() {
+  els.modeText.textContent = state.isTeacher ? "老師模式" : "學生模式";
 
-function getDutyStudent(slot, dateStr) {
-  if (!state.students.length) {
-    return "（未有學生）";
-  }
-  const slotIndex = dutySlots.indexOf(slot);
-  const referenceDate = new Date("2026-01-01T00:00:00");
-  const currentDate = new Date(`${dateStr}T00:00:00`);
-  const dayOffset = Math.floor((currentDate - referenceDate) / (1000 * 60 * 60 * 24));
+  [
+    els.studentNoInput,
+    els.studentNameInput,
+    els.dutyDateInput,
+    els.dutySlotInput,
+    els.dutyOffsetInput,
+    els.bulkStudentInput,
+    els.todoTextInput,
+    els.todoCategoryInput,
+    els.linkTitleInput,
+    els.linkUrlInput,
+    els.linkIconInput
+  ].forEach((element) => {
+    element.disabled = !state.isTeacher;
+  });
 
-  const override = state.dutyOverrides.find(
-    (item) => item.duty_date === dateStr && item.duty_slot === slot
-  );
-  const customOffset = override ? Number(override.duty_offset) : 0;
-  const studentIndex =
-    ((dayOffset + slotIndex + customOffset) % state.students.length + state.students.length) %
-    state.students.length;
-
-  return state.students[studentIndex].name;
-}
-
-function renderStudents() {
-  if (!state.students.length) {
-    els.studentList.innerHTML = '<li class="muted">目前沒有學生資料。</li>';
-    return;
-  }
-
-  els.studentList.innerHTML = "";
-  state.students.forEach((student) => {
-    const li = document.createElement("li");
-    li.innerHTML = `
-      <span>${escapeHtml(student.student_number)}號 ${escapeHtml(student.name)}（缺席 ${escapeHtml(
-      student.absent_days
-    )} 天）</span>
-      <span class="row">
-        <button type="button" data-act="absent-minus" data-id="${student.id}" ${
-          !state.isTeacher ? "disabled" : ""
-        }>-1</button>
-        <button type="button" data-act="absent-plus" data-id="${student.id}" ${
-          !state.isTeacher ? "disabled" : ""
-        }>+1</button>
-        <button class="danger" type="button" data-act="student-delete" data-id="${student.id}" ${
-          !state.isTeacher ? "disabled" : ""
-        }>刪除</button>
-      </span>
-    `;
-    els.studentList.append(li);
+  [
+    els.addStudentBtn,
+    els.bulkImportForm.querySelector('button[type="submit"]'),
+    els.dutyOverrideForm.querySelector('button[type="submit"]'),
+    els.todoForm.querySelector('button[type="submit"]'),
+    els.linkForm.querySelector('button[type="submit"]')
+  ].forEach((button) => {
+    button.disabled = !state.isTeacher;
+    button.classList.toggle("opacity-60", !state.isTeacher);
+    button.classList.toggle("cursor-not-allowed", !state.isTeacher);
   });
 }
 
-function renderDuty() {
-  const today = formatDate();
-  els.todayLabel.textContent = `${today}（班別：${classDataApi.classId}）`;
-  els.dutyTodayList.innerHTML = "";
+function renderConnectionNotice() {
+  const provider = state.provider;
+  const badgeClass = provider.shared
+    ? "bg-emerald-100 text-emerald-700"
+    : "bg-amber-100 text-amber-700";
+  const title = provider.shared ? "Supabase 共享模式" : "示範資料模式";
+  const extra = provider.shared
+    ? "任何人都可看到相同資料；現時 demo RLS 亦代表任何訪客都可能修改資料。"
+    : "此模式不會使用 localStorage / sessionStorage / IndexedDB，重新整理後會回復預設示範內容。";
+
+  els.connectionNotice.innerHTML = `
+    <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="rounded-full px-3 py-1 text-xs font-bold ${badgeClass}">${title}</span>
+          <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 shadow-sm">
+            班別：${escapeHtml(provider.classId)}
+          </span>
+        </div>
+        <p class="mt-3 leading-6 text-slate-700">${escapeHtml(provider.message)}</p>
+        <p class="mt-2 text-xs leading-5 text-slate-500">${escapeHtml(extra)}</p>
+      </div>
+      <div class="rounded-2xl bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+        <p class="font-semibold accent-text">老師 demo 密碼：${escapeHtml(provider.teacherPassword)}</p>
+        <p class="mt-1 text-xs text-slate-500">只作基本防誤觸，正式用途請改用 Supabase Auth。</p>
+      </div>
+    </div>
+  `;
+}
+
+function renderDatePanel() {
+  const info = getDayInfo(state.selectedDate);
+  els.dateDisplay.textContent = info.fullLabel;
+  els.dateTag.textContent = info.tag;
+  els.classTag.textContent = `班別：${classDataApi.classId}`;
+  els.dateHint.textContent = info.hint;
+  els.dutyDateInput.value = state.selectedDate;
+}
+
+function renderDutyCards() {
+  els.dutyCardGrid.innerHTML = "";
 
   dutySlots.forEach((slot) => {
-    const li = document.createElement("li");
-    li.textContent = `${slot}：${getDutyStudent(slot, today)}`;
-    els.dutyTodayList.append(li);
+    const override = getOverride(state.selectedDate, slot.key);
+    const studentName = getDutyStudent(slot.key, state.selectedDate);
+    const article = document.createElement("article");
+    article.className = "duty-card rounded-[1.5rem] p-5 shadow-sm";
+    article.innerHTML = `
+      <div class="flex items-center justify-between gap-3">
+        <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl accent-bg text-xl">
+          <i class="fa-solid ${slot.icon}"></i>
+        </span>
+        <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 shadow-sm">
+          ${escapeHtml(slot.key)}
+        </span>
+      </div>
+      <h3 class="mt-4 text-xl font-black text-slate-900">${escapeHtml(studentName)}</h3>
+      <p class="mt-2 text-sm leading-6 text-slate-600">${escapeHtml(slot.description)}</p>
+      <p class="mt-4 text-xs leading-5 text-slate-500">
+        ${override ? `已套用手動偏移：${escapeHtml(override.offset)}` : "未設定手動偏移，使用自動輪值。"}
+      </p>
+    `;
+    els.dutyCardGrid.append(article);
   });
+}
 
-  if (!state.dutyOverrides.length) {
-    els.dutyOverrideList.innerHTML = '<li class="muted">目前沒有偏移設定。</li>';
+function renderDutyOverrides() {
+  if (!state.manualOffsets.length) {
+    els.dutyOverrideList.innerHTML =
+      '<li class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">目前未設定任何值日偏移。</li>';
     return;
   }
 
   els.dutyOverrideList.innerHTML = "";
-  state.dutyOverrides.forEach((item) => {
+  state.manualOffsets.forEach((item) => {
     const li = document.createElement("li");
+    li.className =
+      "flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between";
     li.innerHTML = `
-      <span>${escapeHtml(item.duty_date)}｜${escapeHtml(item.duty_slot)}｜偏移 ${escapeHtml(
-      item.duty_offset
-    )}</span>
-      <button class="danger" type="button" data-act="duty-delete" data-id="${item.id}" ${
-        !state.isTeacher ? "disabled" : ""
-      }>刪除</button>
+      <div>
+        <p class="font-semibold text-slate-800">${escapeHtml(item.date)} · ${escapeHtml(item.slot)}</p>
+        <p class="text-sm text-slate-500">手動偏移：${escapeHtml(item.offset)}</p>
+      </div>
+      <button
+        type="button"
+        data-act="duty-delete"
+        data-id="${item.id}"
+        class="rounded-2xl border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+        ${!state.isTeacher ? "disabled" : ""}
+      >
+        刪除
+      </button>
     `;
     els.dutyOverrideList.append(li);
   });
 }
 
+function renderStudentStats() {
+  const totalStudents = state.studentList.length;
+  const totalAbsentDays = state.studentList.reduce((sum, item) => sum + Number(item.absentDays || 0), 0);
+  const highestAbsent =
+    state.studentList.reduce(
+      (current, item) => (Number(item.absentDays || 0) > Number(current.absentDays || 0) ? item : current),
+      { name: "暫無", absentDays: 0 }
+    ) || { name: "暫無", absentDays: 0 };
+
+  const cards = [
+    { label: "學生人數", value: `${totalStudents} 位` },
+    { label: "累計缺席", value: `${totalAbsentDays} 天` },
+    { label: "最高缺席", value: `${highestAbsent.name} · ${highestAbsent.absentDays} 天` }
+  ];
+
+  els.studentStats.innerHTML = cards
+    .map(
+      (card) => `
+        <div class="rounded-[1.25rem] border border-slate-100 bg-white px-4 py-4 shadow-sm">
+          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">${escapeHtml(card.label)}</p>
+          <p class="mt-2 text-base font-black text-slate-900">${escapeHtml(card.value)}</p>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderStudents() {
+  if (!state.studentList.length) {
+    els.studentList.innerHTML =
+      '<li class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">目前沒有學生資料，可在老師模式新增或批量匯入。</li>';
+    return;
+  }
+
+  els.studentList.innerHTML = "";
+  state.studentList.forEach((student) => {
+    const li = document.createElement("li");
+    li.className =
+      "flex flex-col gap-3 rounded-[1.5rem] border border-slate-100 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between";
+    li.innerHTML = `
+      <div>
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="rounded-full accent-bg px-3 py-1 text-xs font-bold">#${escapeHtml(
+            student.studentNumber
+          )}</span>
+          <h3 class="text-lg font-bold text-slate-900">${escapeHtml(student.name)}</h3>
+        </div>
+        <p class="mt-2 text-sm text-slate-500">缺席統計：${escapeHtml(student.absentDays)} 天</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button
+          type="button"
+          data-act="absent-minus"
+          data-id="${student.id}"
+          class="rounded-2xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          ${!state.isTeacher ? "disabled" : ""}
+        >
+          -1
+        </button>
+        <button
+          type="button"
+          data-act="absent-plus"
+          data-id="${student.id}"
+          class="rounded-2xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          ${!state.isTeacher ? "disabled" : ""}
+        >
+          +1
+        </button>
+        <button
+          type="button"
+          data-act="student-delete"
+          data-id="${student.id}"
+          class="rounded-2xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+          ${!state.isTeacher ? "disabled" : ""}
+        >
+          刪除
+        </button>
+      </div>
+    `;
+    els.studentList.append(li);
+  });
+}
+
 function renderTodos() {
   if (!state.todos.length) {
-    els.todoList.innerHTML = '<li class="muted">目前沒有待辦事項。</li>';
+    els.todoList.innerHTML =
+      '<li class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">目前沒有提醒事項。</li>';
     return;
   }
 
   els.todoList.innerHTML = "";
   state.todos.forEach((todo) => {
     const li = document.createElement("li");
+    li.className = "rounded-[1.5rem] border border-slate-100 bg-white px-4 py-4 shadow-sm";
     li.innerHTML = `
-      <span class="${todo.completed ? "done" : ""}">${escapeHtml(todo.text)}（${escapeHtml(
-      todo.category || "一般"
-    )}）</span>
-      <span class="row">
-        <label>
-          <input type="checkbox" data-act="todo-toggle" data-id="${todo.id}" ${todo.completed ? "checked" : ""} ${
-      !state.isTeacher ? "disabled" : ""
-    } /> 完成
-        </label>
-        <button class="danger" type="button" data-act="todo-delete" data-id="${todo.id}" ${
-          !state.isTeacher ? "disabled" : ""
-        }>刪除</button>
-      </span>
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="rounded-full accent-bg px-3 py-1 text-xs font-bold">${escapeHtml(
+              todo.category || "一般"
+            )}</span>
+            <span class="text-sm ${todo.completed ? "text-slate-400 line-through" : "text-slate-800"}">${escapeHtml(
+              todo.text
+            )}</span>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <label class="inline-flex items-center gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              data-act="todo-toggle"
+              data-id="${todo.id}"
+              class="h-4 w-4 rounded border-slate-300"
+              ${todo.completed ? "checked" : ""}
+              ${!state.isTeacher ? "disabled" : ""}
+            />
+            完成
+          </label>
+          <button
+            type="button"
+            data-act="todo-delete"
+            data-id="${todo.id}"
+            class="rounded-2xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+            ${!state.isTeacher ? "disabled" : ""}
+          >
+            刪除
+          </button>
+        </div>
+      </div>
     `;
     els.todoList.append(li);
   });
 }
 
 function renderLinks() {
-  if (!state.links.length) {
-    els.linkList.innerHTML = '<li class="muted">目前沒有自訂連結。</li>';
+  if (!state.customLinks.length) {
+    els.linkList.innerHTML =
+      '<li class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">目前沒有常用連結。</li>';
     return;
   }
 
   els.linkList.innerHTML = "";
-  state.links.forEach((link) => {
-    const url = safeUrl(link.url);
+  state.customLinks.forEach((link) => {
     const li = document.createElement("li");
+    li.className =
+      "flex flex-col gap-3 rounded-[1.5rem] border border-slate-100 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between";
     li.innerHTML = `
-      <span>${escapeHtml(link.icon || "🔗")} <a href="${escapeHtml(url)}" target="_blank" rel="noreferrer noopener">${escapeHtml(link.title)}</a></span>
-      <button class="danger" type="button" data-act="link-delete" data-id="${link.id}" ${
-        !state.isTeacher ? "disabled" : ""
-      }>刪除</button>
+      <a
+        href="${escapeHtml(safeUrl(link.url))}"
+        target="_blank"
+        rel="noreferrer noopener"
+        class="min-w-0 flex-1 rounded-2xl bg-slate-50 px-4 py-3 transition hover:bg-slate-100"
+      >
+        <div class="flex items-center gap-3">
+          <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl accent-bg text-lg">
+            ${escapeHtml(link.icon || "🔗")}
+          </span>
+          <div class="min-w-0">
+            <p class="truncate font-bold text-slate-900">${escapeHtml(link.title)}</p>
+            <p class="truncate text-sm text-slate-500">${escapeHtml(link.url)}</p>
+          </div>
+        </div>
+      </a>
+      <button
+        type="button"
+        data-act="link-delete"
+        data-id="${link.id}"
+        class="rounded-2xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
+        ${!state.isTeacher ? "disabled" : ""}
+      >
+        刪除
+      </button>
     `;
     els.linkList.append(li);
   });
 }
 
 function renderAll() {
+  renderConnectionNotice();
   updateModeUi();
+  renderDatePanel();
+  renderDutyCards();
+  renderDutyOverrides();
+  renderStudentStats();
   renderStudents();
-  renderDuty();
   renderTodos();
   renderLinks();
 }
 
 async function refreshAll(showReady = false) {
   state.loading = true;
-  setStatus("info", "同步資料中...");
+  setStatus("info", "正在同步資料…");
   try {
-    const [students, dutyOverrides, todos, links] = await Promise.all([
+    const [studentList, manualOffsets, todos, customLinks] = await Promise.all([
       classDataApi.listStudents(),
       classDataApi.listDutyOverrides(),
       classDataApi.listTodos(),
       classDataApi.listLinks()
     ]);
 
-    state.students = students || [];
-    state.dutyOverrides = dutyOverrides || [];
+    state.provider = classDataApi.getProviderInfo();
+    state.studentList = studentList || [];
+    state.manualOffsets = manualOffsets || [];
     state.todos = todos || [];
-    state.links = links || [];
+    state.customLinks = customLinks || [];
     renderAll();
 
     if (showReady) {
-      setStatus("ok", "已同步最新資料。其他使用者的更新也會自動顯示。");
+      setStatus(
+        "ok",
+        state.provider.shared
+          ? "已同步最新 Supabase 共享資料，其他訪客重新載入或透過 realtime 亦可看到更新。"
+          : "現正顯示完整示範資料；設定 Supabase 後會自動切換到共享模式。"
+      );
     }
   } catch (error) {
-    setStatus("error", `載入失敗：${error.message}`);
+    state.provider = classDataApi.getProviderInfo();
+    renderAll();
+    setStatus("error", error.message || "載入資料時發生未知錯誤。");
   } finally {
     state.loading = false;
   }
 }
 
-els.teacherModeBtn.addEventListener("click", () => {
-  const configuredPassword = (window.APP_CONFIG && window.APP_CONFIG.TEACHER_PASSWORD) || "";
-  if (!configuredPassword) {
-    setStatus("error", "尚未設定老師模式密碼（config.js）。");
+function fillLeaveLetterStudent() {
+  if (!els.leaveStudentInput.value && state.studentList.length > 0) {
+    els.leaveStudentInput.value = state.studentList[0].name;
+  }
+}
+
+function buildLeaveLetter(studentName, startDate, endDate, reason) {
+  const startText = parseDateValue(startDate).toLocaleDateString("zh-HK", {
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+  const endText = parseDateValue(endDate).toLocaleDateString("zh-HK", {
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+
+  return `敬啟者：\n\n本人為 ${studentName} 的家長／監護人，現特此為學生申請於 ${startText} 至 ${endText} 期間告假。\n告假原因：${reason}。\n\n敬請批准，並協助通知有關老師及補回課業安排。\n\n此致\n4C 班主任\n\n家長／監護人：________________\n日期：${formatDateValue(new Date())}`;
+}
+
+function parseBulkStudents(input) {
+  return input
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const match = line.match(/^(\d+)\s*[,，\t ]+\s*(.+)$/);
+      if (!match) {
+        return { error: `格式不正確：${line}` };
+      }
+      return {
+        studentNumber: Number(match[1]),
+        name: match[2].trim()
+      };
+    });
+}
+
+els.themeSwitcher.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-theme]");
+  if (!button) {
     return;
   }
+  applyTheme(button.dataset.theme);
+});
 
-  if (els.teacherPassword.value === configuredPassword) {
+els.teacherModeBtn.addEventListener("click", () => {
+  if (els.teacherPassword.value === classDataApi.teacherPassword) {
     state.isTeacher = true;
     els.teacherPassword.value = "";
     renderAll();
-    setStatus("ok", "已切換到老師模式。請留意：此密碼在前端並不安全。 ");
+    setStatus("ok", "已切換到老師模式。請留意：這只是 demo 密碼，不能視為安全登入。");
     return;
   }
-
-  setStatus("error", "老師密碼錯誤。");
+  setStatus("error", "老師 demo 密碼錯誤。");
 });
 
 els.studentModeBtn.addEventListener("click", () => {
   state.isTeacher = false;
   renderAll();
-  setStatus("info", "已切換到學生模式。");
+  setStatus("info", "已切換回學生模式。");
+});
+
+els.prevDayBtn.addEventListener("click", () => {
+  state.selectedDate = addDays(state.selectedDate, -1);
+  renderDatePanel();
+  renderDutyCards();
+});
+
+els.todayBtn.addEventListener("click", () => {
+  state.selectedDate = formatDateValue(new Date());
+  renderDatePanel();
+  renderDutyCards();
+});
+
+els.nextDayBtn.addEventListener("click", () => {
+  state.selectedDate = addDays(state.selectedDate, 1);
+  renderDatePanel();
+  renderDutyCards();
 });
 
 els.studentForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!ensureTeacherOrWarn()) return;
 
-  const studentNo = Number(els.studentNoInput.value);
-  const studentName = els.studentNameInput.value.trim();
-  if (!studentNo || !studentName) return;
+  const studentNumber = Number(els.studentNoInput.value);
+  const name = els.studentNameInput.value.trim();
+  if (!studentNumber || !name) {
+    setStatus("error", "請輸入有效的學號和姓名。");
+    return;
+  }
 
   try {
-    await classDataApi.addStudent(studentNo, studentName);
+    await classDataApi.addStudent(studentNumber, name);
     els.studentForm.reset();
     await refreshAll(true);
+    fillLeaveLetterStudent();
   } catch (error) {
-    setStatus("error", error.message);
+    setStatus("error", error.message || "新增學生失敗。");
   }
+});
+
+els.bulkImportForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!ensureTeacherOrWarn()) return;
+
+  const rows = parseBulkStudents(els.bulkStudentInput.value);
+  const invalidRows = rows.filter((item) => item.error);
+  if (invalidRows.length > 0) {
+    els.bulkImportFeedback.textContent = invalidRows.map((item) => item.error).join("；");
+    setStatus("error", "批量匯入失敗，請先修正格式。");
+    return;
+  }
+
+  let importedCount = 0;
+  const skipped = [];
+  for (const row of rows) {
+    if (state.studentList.some((item) => item.studentNumber === row.studentNumber)) {
+      skipped.push(`${row.studentNumber} ${row.name}`);
+      continue;
+    }
+    try {
+      await classDataApi.addStudent(row.studentNumber, row.name);
+      importedCount += 1;
+    } catch (error) {
+      skipped.push(`${row.studentNumber} ${row.name}（${error.message}）`);
+    }
+  }
+
+  els.bulkStudentInput.value = "";
+  els.bulkImportFeedback.textContent =
+    importedCount > 0
+      ? `成功匯入 ${importedCount} 位學生。${skipped.length ? `略過：${skipped.join("、")}` : ""}`
+      : skipped.length
+        ? `未有匯入新學生，略過：${skipped.join("、")}`
+        : "沒有可匯入的內容。";
+  await refreshAll(true);
+  fillLeaveLetterStudent();
 });
 
 els.studentList.addEventListener("click", async (event) => {
   const button = event.target.closest("button[data-act]");
   if (!button || !ensureTeacherOrWarn()) return;
+
   const studentId = Number(button.dataset.id);
-  const student = state.students.find((item) => item.id === studentId);
-  if (!student) return;
+  const student = state.studentList.find((item) => item.id === studentId);
+  if (!student) {
+    setStatus("error", "找不到學生資料。");
+    return;
+  }
 
   try {
     if (button.dataset.act === "student-delete") {
       await classDataApi.deleteStudent(studentId);
     } else if (button.dataset.act === "absent-plus") {
-      await classDataApi.updateStudentAbsentDays(studentId, Number(student.absent_days) + 1);
+      await classDataApi.updateStudentAbsentDays(studentId, Number(student.absentDays) + 1);
     } else if (button.dataset.act === "absent-minus") {
-      await classDataApi.updateStudentAbsentDays(studentId, Math.max(0, Number(student.absent_days) - 1));
+      await classDataApi.updateStudentAbsentDays(studentId, Math.max(0, Number(student.absentDays) - 1));
     }
     await refreshAll(true);
   } catch (error) {
-    setStatus("error", error.message);
+    setStatus("error", error.message || "更新學生資料失敗。");
   }
 });
 
@@ -344,18 +809,21 @@ els.dutyOverrideForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   if (!ensureTeacherOrWarn()) return;
 
-  const dutyDate = els.dutyDateInput.value;
-  const dutySlot = els.dutySlotInput.value;
-  const dutyOffset = Number(els.dutyOffsetInput.value);
-  if (!dutyDate || !dutySlot || Number.isNaN(dutyOffset)) return;
+  const date = els.dutyDateInput.value;
+  const slot = els.dutySlotInput.value;
+  const offset = Number(els.dutyOffsetInput.value);
+  if (!date || !slot || Number.isNaN(offset)) {
+    setStatus("error", "請輸入有效的值日偏移資料。");
+    return;
+  }
 
   try {
-    await classDataApi.upsertDutyOverride(dutyDate, dutySlot, dutyOffset);
-    els.dutyOverrideForm.reset();
+    await classDataApi.upsertDutyOverride(date, slot, offset);
     els.dutyOffsetInput.value = "0";
+    state.selectedDate = date;
     await refreshAll(true);
   } catch (error) {
-    setStatus("error", error.message);
+    setStatus("error", error.message || "儲存值日偏移失敗。");
   }
 });
 
@@ -367,7 +835,7 @@ els.dutyOverrideList.addEventListener("click", async (event) => {
     await classDataApi.deleteDutyOverride(Number(button.dataset.id));
     await refreshAll(true);
   } catch (error) {
-    setStatus("error", error.message);
+    setStatus("error", error.message || "刪除值日偏移失敗。");
   }
 });
 
@@ -377,7 +845,10 @@ els.todoForm.addEventListener("submit", async (event) => {
 
   const text = els.todoTextInput.value.trim();
   const category = els.todoCategoryInput.value.trim();
-  if (!text) return;
+  if (!text) {
+    setStatus("error", "請輸入提醒事項。");
+    return;
+  }
 
   try {
     await classDataApi.addTodo(text, category);
@@ -385,20 +856,19 @@ els.todoForm.addEventListener("submit", async (event) => {
     els.todoCategoryInput.value = "一般";
     await refreshAll(true);
   } catch (error) {
-    setStatus("error", error.message);
+    setStatus("error", error.message || "新增提醒事項失敗。");
   }
 });
 
 els.todoList.addEventListener("click", async (event) => {
-  const deleteButton = event.target.closest("button[data-act='todo-delete']");
-  if (deleteButton) {
-    if (!ensureTeacherOrWarn()) return;
-    try {
-      await classDataApi.deleteTodo(Number(deleteButton.dataset.id));
-      await refreshAll(true);
-    } catch (error) {
-      setStatus("error", error.message);
-    }
+  const button = event.target.closest("button[data-act='todo-delete']");
+  if (!button || !ensureTeacherOrWarn()) return;
+
+  try {
+    await classDataApi.deleteTodo(Number(button.dataset.id));
+    await refreshAll(true);
+  } catch (error) {
+    setStatus("error", error.message || "刪除提醒事項失敗。");
   }
 });
 
@@ -414,7 +884,7 @@ els.todoList.addEventListener("change", async (event) => {
     await classDataApi.updateTodo(Number(checkbox.dataset.id), checkbox.checked);
     await refreshAll(true);
   } catch (error) {
-    setStatus("error", error.message);
+    setStatus("error", error.message || "更新提醒事項失敗。");
   }
 });
 
@@ -425,7 +895,10 @@ els.linkForm.addEventListener("submit", async (event) => {
   const title = els.linkTitleInput.value.trim();
   const url = els.linkUrlInput.value.trim();
   const icon = els.linkIconInput.value.trim();
-  if (!title || !url) return;
+  if (!title || !url) {
+    setStatus("error", "請輸入完整的連結標題與網址。");
+    return;
+  }
 
   try {
     await classDataApi.addLink(title, url, icon);
@@ -433,7 +906,7 @@ els.linkForm.addEventListener("submit", async (event) => {
     els.linkIconInput.value = "🔗";
     await refreshAll(true);
   } catch (error) {
-    setStatus("error", error.message);
+    setStatus("error", error.message || "新增常用連結失敗。");
   }
 });
 
@@ -445,17 +918,40 @@ els.linkList.addEventListener("click", async (event) => {
     await classDataApi.deleteLink(Number(button.dataset.id));
     await refreshAll(true);
   } catch (error) {
-    setStatus("error", error.message);
+    setStatus("error", error.message || "刪除常用連結失敗。");
   }
 });
 
-window.addEventListener("offline", () => {
-  setStatus("error", "目前離線，無法同步雲端資料。請檢查網路。 ");
+els.leaveLetterForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  const studentName = els.leaveStudentInput.value.trim();
+  const startDate = els.leaveStartInput.value;
+  const endDate = els.leaveEndInput.value;
+  const reason = els.leaveReasonInput.value.trim();
+
+  if (!studentName || !startDate || !endDate || !reason) {
+    setStatus("error", "請完整填寫告假信資料。");
+    return;
+  }
+
+  if (parseDateValue(endDate) < parseDateValue(startDate)) {
+    setStatus("error", "結束日期不能早於開始日期。");
+    return;
+  }
+
+  els.leaveLetterOutput.hidden = false;
+  els.leaveLetterOutput.value = buildLeaveLetter(studentName, startDate, endDate, reason);
+  setStatus("ok", "已生成告假信，可直接複製使用。");
 });
 
-window.addEventListener("online", () => {
-  setStatus("info", "網路已恢復，正在重新同步資料...");
-  refreshAll(true);
+window.addEventListener("offline", () => {
+  setStatus("error", "目前離線，若使用 Supabase 共享模式將無法同步資料。");
+});
+
+window.addEventListener("online", async () => {
+  setStatus("info", "網路已恢復，正在重新同步資料…");
+  await refreshAll(true);
 });
 
 let refreshTimer = null;
@@ -468,5 +964,8 @@ subscribeToChanges(() => {
   }, 300);
 });
 
-els.dutyDateInput.value = formatDate();
-refreshAll(true);
+applyTheme("pink");
+els.dutyDateInput.value = state.selectedDate;
+els.leaveStartInput.value = state.selectedDate;
+els.leaveEndInput.value = state.selectedDate;
+refreshAll(true).then(fillLeaveLetterStudent);
