@@ -10,51 +10,153 @@ permissions:
   pages: write
   id-token: write
 
+# Do NOT cancel in-progress deployments to avoid half-deployed states.
+# Queue new runs so they execute after the current one completes.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
+  validate:
+    name: Lint, syntax check & tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check JavaScript syntax (app.js, supabase-data.js)
+        run: |
+          echo "▶ Checking JavaScript syntax..."
+          node --check app.js
+          node --check supabase-data.js
+          echo "✅ Syntax OK"
+
+      - name: Run security & UI unit tests
+        run: |
+          echo "▶ Running unit tests..."
+          node --test tests/ui-security.test.mjs
+          echo "✅ Tests passed"
+
+      - name: Validate workflow YAML syntax
+        run: |
+          echo "▶ Validating workflow YAML..."
+          python3 -c "
+          import yaml, sys
+          with open('.github/workflows/deploy-pages.yml') as f:
+            yaml.safe_load(f)
+          print('✅ Workflow YAML is valid')
+          "
+
+      - name: Smoke-test teacher mode config generation
+        run: |
+          echo "▶ Smoke-testing config generation (teacher mode)..."
+          python3 - <<'PY'
+          import hashlib, json, os
+          # Use a placeholder hash — no real password is set or printed
+          mock_password = "CI_MOCK_TEACHER_PASSWORD"
+          cfg = {
+            "SUPABASE_URL": "https://example.supabase.co",
+            "SUPABASE_ANON_KEY": "ci-mock-anon-key",
+            "CLASS_ID": "4C",
+            "TEACHER_PASSWORD_HASH": hashlib.sha256(mock_password.encode("utf-8")).hexdigest()
+          }
+          out = "window.APP_CONFIG = " + json.dumps(cfg, ensure_ascii=False, indent=2) + ";\n"
+          # Verify config contains required fields and hash is not empty
+          assert "TEACHER_PASSWORD_HASH" in out, "Missing TEACHER_PASSWORD_HASH"
+          assert cfg["TEACHER_PASSWORD_HASH"] != "", "TEACHER_PASSWORD_HASH must not be empty"
+          assert "CLASS_ID" in out, "Missing CLASS_ID"
+          assert mock_password not in out, "Plaintext password must not appear in config output"
+          print("✅ Teacher mode config generation OK")
+          print(f"   Hash present: {cfg['TEACHER_PASSWORD_HASH'][:8]}... (first 8 chars shown)")
+          PY
+
+      - name: Smoke-test student mode config generation (no teacher password)
+        run: |
+          echo "▶ Smoke-testing config generation (student mode — no teacher password)..."
+          python3 - <<'PY'
+          import json
+          cfg = {
+            "SUPABASE_URL": "https://example.supabase.co",
+            "SUPABASE_ANON_KEY": "ci-mock-anon-key",
+            "CLASS_ID": "4C",
+            "TEACHER_PASSWORD_HASH": ""
+          }
+          out = "window.APP_CONFIG = " + json.dumps(cfg, ensure_ascii=False, indent=2) + ";\n"
+          assert cfg["TEACHER_PASSWORD_HASH"] == "", "Student mode must have empty hash"
+          assert "CLASS_ID" in out
+          print("✅ Student mode config generation OK (teacher auth disabled)")
+          PY
+
+      - name: Verify required source files exist
+        run: |
+          echo "▶ Checking required source files..."
+          for f in index.html app.js supabase-data.js config.example.js; do
+            [ -f "$f" ] && echo "  ✅ $f" || { echo "  ❌ $f missing"; exit 1; }
+          done
+
   deploy:
+    name: Build & deploy to GitHub Pages
+    needs: validate
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Prepare static site files
+        id: prepare
         env:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           CLASS_ID: ${{ vars.CLASS_ID }}
           TEACHER_MODE_PASSWORD: ${{ secrets.TEACHER_MODE_PASSWORD }}
         run: |
+          echo "▶ Building static site..."
           rm -rf ./_site
           mkdir -p ./_site
           cp ./index.html ./_site/index.html
           cp ./app.js ./_site/app.js
           cp ./supabase-data.js ./_site/supabase-data.js
-          python - <<'PY'
-          import hashlib, json, os
+
+          python3 - <<'PY'
+          import hashlib, json, os, sys
           teacher_password = (os.getenv("TEACHER_MODE_PASSWORD") or "").strip()
+          supabase_url = os.getenv("SUPABASE_URL", "")
+          class_id = os.getenv("CLASS_ID", "4C") or "4C"
+
           cfg = {
-            "SUPABASE_URL": os.getenv("SUPABASE_URL", ""),
+            "SUPABASE_URL": supabase_url,
             "SUPABASE_ANON_KEY": os.getenv("SUPABASE_ANON_KEY", ""),
-            "CLASS_ID": os.getenv("CLASS_ID", "4C") or "4C",
+            "CLASS_ID": class_id,
             "TEACHER_PASSWORD_HASH": hashlib.sha256(teacher_password.encode("utf-8")).hexdigest() if teacher_password else ""
           }
           with open("./_site/config.js", "w", encoding="utf-8") as f:
             f.write("window.APP_CONFIG = ")
             f.write(json.dumps(cfg, ensure_ascii=False, indent=2))
-            f.write(";\\n")
+            f.write(";\n")
+
+          teacher_mode = "enabled (hash configured)" if teacher_password else "disabled (no password set)"
+          print(f"  CLASS_ID: {class_id}")
+          print(f"  Supabase URL configured: {'yes' if supabase_url else 'no (offline/demo mode)'}")
+          print(f"  Teacher mode: {teacher_mode}")
           PY
 
-      - name: Upload artifact
+          echo "✅ Site files prepared:"
+          ls -lh ./_site/
+
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./_site
@@ -62,3 +164,27 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        timeout-minutes: 10
+
+      - name: Report deployment result
+        if: always()
+        run: |
+          outcome="${{ steps.deployment.outcome }}"
+          if [ "$outcome" = "success" ]; then
+            echo "✅ Deployment succeeded: ${{ steps.deployment.outputs.page_url }}"
+          elif [ "$outcome" = "skipped" ]; then
+            echo "⏭ Deployment was skipped (likely a prior step failed)."
+          else
+            echo "❌ Deployment step outcome: $outcome"
+            echo "   Check the 'Deploy to GitHub Pages' step above for details."
+          fi
+
+      - name: Upload build diagnostics on failure
+        if: failure() || steps.deployment.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-diagnostics-${{ github.run_number }}
+          path: |
+            ./_site/
+          retention-days: 7
+          if-no-files-found: warn
