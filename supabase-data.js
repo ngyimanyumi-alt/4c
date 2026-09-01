@@ -14,7 +14,9 @@ const supabaseClient = configError
       }
     });
 
-const CLASS_FILTER = { class_id: CLASS_ID || "4C" };
+const candidateClassId = typeof CLASS_ID === "string" ? CLASS_ID.trim() : "";
+const safeClassId = /^[A-Za-z0-9_-]{1,32}$/.test(candidateClassId) ? candidateClassId : "4C";
+const CLASS_FILTER = { class_id: safeClassId };
 
 async function run(queryFactory, errorPrefix) {
   if (configError) {

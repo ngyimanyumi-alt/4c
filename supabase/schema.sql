@@ -201,8 +201,7 @@ values
   ('4C', 1, '陳大文', 0),
   ('4C', 2, '李小美', 0),
   ('4C', 3, '王俊傑', 0)
-on conflict (class_id, student_number) do update
-set name = excluded.name;
+on conflict (class_id, student_number) do nothing;
 
 insert into public.todos (class_id, text, category, completed)
 select '4C', item_text, item_category, false
