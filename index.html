@@ -46,11 +46,44 @@
         --theme-strong: 157 23 77;
       }
 
+      html {
+        -webkit-text-size-adjust: 100%;
+        text-rendering: optimizeLegibility;
+      }
+
+      * {
+        min-width: 0;
+      }
+
       body {
         font-family: "Noto Sans TC", sans-serif;
+        line-height: 1.65;
+        letter-spacing: 0.01em;
+        color: #0f172a;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        overflow-wrap: anywhere;
         background:
           radial-gradient(circle at top, rgba(var(--theme-accent), 0.8), transparent 38%),
           linear-gradient(180deg, #fff9fc 0%, #fdf2f8 35%, #f8fafc 100%);
+      }
+
+      input,
+      textarea,
+      button,
+      select {
+        font: inherit;
+      }
+
+      input,
+      textarea,
+      button {
+        min-height: 2.75rem;
+      }
+
+      :focus-visible {
+        outline: 3px solid rgba(var(--theme-primary), 0.36);
+        outline-offset: 2px;
       }
 
       .theme-card {
@@ -123,7 +156,7 @@
     </style>
   </head>
   <body class="min-h-screen text-slate-800">
-    <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
       <header class="theme-card theme-gradient mb-6 overflow-hidden rounded-[2rem] shadow-dreamy">
         <div
           class="grid gap-6 px-6 py-8 text-white sm:px-8 lg:grid-cols-[1.5fr_1fr] lg:px-10 lg:py-10"
@@ -184,9 +217,8 @@
                 Demo only
               </span>
             </div>
-            <p class="mt-3 text-sm leading-6 text-white/85">
-              老師 demo 密碼固定為 <strong>23896299</strong>。此密碼只作基本防誤觸，
-              <strong>不是安全登入</strong>；正式用途請改用 Supabase Auth。
+            <p class="mt-3 text-sm leading-6 text-white/90">
+              老師模式使用部署環境的安全秘密作驗證，不會在畫面、回應或前端程式碼顯示密碼內容。
             </p>
             <div class="mt-4 flex flex-col gap-3">
               <label class="text-sm font-medium text-white/90" for="teacherPassword">
@@ -196,7 +228,7 @@
                 id="teacherPassword"
                 type="password"
                 class="w-full rounded-2xl border border-white/25 bg-white/90 px-4 py-3 text-slate-800 outline-none ring-0 placeholder:text-slate-400"
-                placeholder="輸入 23896299 進入老師模式"
+                placeholder="輸入老師模式密碼"
               />
               <div class="flex flex-wrap gap-3">
                 <button
@@ -334,7 +366,7 @@
               </div>
               <div
                 id="studentStats"
-                class="grid min-w-[240px] gap-3 sm:grid-cols-3 lg:min-w-[340px]"
+                class="grid w-full gap-3 sm:grid-cols-3 lg:max-w-[28rem]"
               ></div>
             </div>
 
@@ -472,9 +504,28 @@
           <section class="theme-card rounded-[1.75rem] p-5 shadow-sm sm:p-6">
             <h2 class="section-title text-2xl font-black text-slate-900">告假信生成器</h2>
             <p class="mt-2 text-sm leading-6 text-slate-600">
-              適合快速產生家長或學生可再微調的中文告假信內容。
+              預設優先使用你上傳／已有的 PDF；只有你明確操作先會生成新的文字告假信。
             </p>
             <form id="leaveLetterForm" class="mt-5 grid gap-3">
+              <input
+                id="leavePdfInput"
+                type="file"
+                accept="application/pdf"
+                class="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none"
+              />
+              <div class="grid gap-3 sm:grid-cols-[1fr_auto]">
+                <label class="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <input id="forceGenerateLetter" type="checkbox" class="h-4 w-4 accent-pink-500" />
+                  <span class="text-sm text-slate-700">仍然生成新文字告假信（我已明確確認）</span>
+                </label>
+                <button
+                  id="useUploadedPdfBtn"
+                  type="button"
+                  class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm"
+                >
+                  優先使用上傳 PDF
+                </button>
+              </div>
               <input
                 id="leaveStudentInput"
                 type="text"
@@ -508,9 +559,14 @@
                 class="rounded-2xl px-4 py-3 text-sm font-bold text-white shadow-sm"
                 style="background: rgb(var(--theme-primary))"
               >
-                <i class="fa-solid fa-envelope-open-text mr-2"></i>生成告假信
+                <i class="fa-solid fa-envelope-open-text mr-2"></i>明確生成新告假信
               </button>
             </form>
+            <p
+              id="leaveLetterSource"
+              class="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700"
+              hidden
+            ></p>
             <textarea
               id="leaveLetterOutput"
               rows="10"

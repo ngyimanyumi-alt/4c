@@ -145,7 +145,11 @@ const els = {
   leaveStartInput: document.getElementById("leaveStartInput"),
   leaveEndInput: document.getElementById("leaveEndInput"),
   leaveReasonInput: document.getElementById("leaveReasonInput"),
-  leaveLetterOutput: document.getElementById("leaveLetterOutput")
+  leaveLetterOutput: document.getElementById("leaveLetterOutput"),
+  leavePdfInput: document.getElementById("leavePdfInput"),
+  useUploadedPdfBtn: document.getElementById("useUploadedPdfBtn"),
+  forceGenerateLetter: document.getElementById("forceGenerateLetter"),
+  leaveLetterSource: document.getElementById("leaveLetterSource")
 };
 
 dutySlots.forEach((slot) => {
@@ -283,12 +287,21 @@ function ensureTeacherOrWarn() {
   if (state.isTeacher) {
     return true;
   }
-  setStatus("error", "目前是學生模式，不能修改共享資料。請先輸入 demo 密碼切換老師模式。");
+  setStatus("error", "目前是學生模式，不能修改共享資料。請先通過老師模式驗證。");
   return false;
 }
 
 function updateModeUi() {
   els.modeText.textContent = state.isTeacher ? "老師模式" : "學生模式";
+  const authReady = classDataApi.isTeacherAuthConfigured;
+
+  els.teacherPassword.disabled = !authReady;
+  els.teacherModeBtn.disabled = !authReady;
+  els.teacherModeBtn.classList.toggle("opacity-60", !authReady);
+  els.teacherModeBtn.classList.toggle("cursor-not-allowed", !authReady);
+  if (!authReady) {
+    els.teacherPassword.value = "";
+  }
 
   [
     els.studentNoInput,
@@ -328,6 +341,12 @@ function renderConnectionNotice() {
   const extra = provider.shared
     ? "任何人都可看到相同資料；現時 demo RLS 亦代表任何訪客都可能修改資料。"
     : "此模式不會使用 localStorage / sessionStorage / IndexedDB，重新整理後會回復預設示範內容。";
+  const authBadge = provider.teacherAuthConfigured
+    ? '<span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">老師驗證：已啟用</span>'
+    : '<span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">老師驗證：未設定（僅學生模式）</span>';
+  const authHint = provider.teacherAuthConfigured
+    ? "老師密碼僅以環境秘密雜湊驗證，不會顯示於頁面或回應內容。"
+    : "尚未設定老師模式驗證秘密；如需啟用，請在部署環境設定老師密碼 secret。";
 
   els.connectionNotice.innerHTML = `
     <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -337,13 +356,10 @@ function renderConnectionNotice() {
           <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 shadow-sm">
             班別：${escapeHtml(provider.classId)}
           </span>
+          ${authBadge}
         </div>
         <p class="mt-3 leading-6 text-slate-700">${escapeHtml(provider.message)}</p>
-        <p class="mt-2 text-xs leading-5 text-slate-500">${escapeHtml(extra)}</p>
-      </div>
-      <div class="rounded-2xl bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
-        <p class="font-semibold accent-text">老師 demo 密碼：${escapeHtml(provider.teacherPassword)}</p>
-        <p class="mt-1 text-xs text-slate-500">只作基本防誤觸，正式用途請改用 Supabase Auth。</p>
+        <p class="mt-2 text-xs leading-5 text-slate-500">${escapeHtml(extra)} ${escapeHtml(authHint)}</p>
       </div>
     </div>
   `;
@@ -646,6 +662,20 @@ function fillLeaveLetterStudent() {
   }
 }
 
+function getUploadedLeavePdf() {
+  return els.leavePdfInput.files && els.leavePdfInput.files.length > 0 ? els.leavePdfInput.files[0] : null;
+}
+
+function setLeaveLetterSource(text) {
+  if (!text) {
+    els.leaveLetterSource.hidden = true;
+    els.leaveLetterSource.textContent = "";
+    return;
+  }
+  els.leaveLetterSource.hidden = false;
+  els.leaveLetterSource.textContent = text;
+}
+
 function buildLeaveLetter(studentName, startDate, endDate, reason) {
   const startText = parseDateValue(startDate).toLocaleDateString("zh-HK", {
     year: "numeric",
@@ -686,15 +716,23 @@ els.themeSwitcher.addEventListener("click", (event) => {
   applyTheme(button.dataset.theme);
 });
 
-els.teacherModeBtn.addEventListener("click", () => {
-  if (els.teacherPassword.value === classDataApi.teacherPassword) {
-    state.isTeacher = true;
-    els.teacherPassword.value = "";
-    renderAll();
-    setStatus("ok", "已切換到老師模式。請留意：這只是 demo 密碼，不能視為安全登入。");
+els.teacherModeBtn.addEventListener("click", async () => {
+  if (!classDataApi.isTeacherAuthConfigured) {
+    setStatus("error", "老師模式驗證未設定，暫時不能切換老師模式。");
     return;
   }
-  setStatus("error", "老師 demo 密碼錯誤。");
+  try {
+    if (await classDataApi.verifyTeacherPassword(els.teacherPassword.value)) {
+      state.isTeacher = true;
+      els.teacherPassword.value = "";
+      renderAll();
+      setStatus("ok", "已切換到老師模式。");
+      return;
+    }
+    setStatus("error", "老師密碼錯誤。");
+  } catch (error) {
+    setStatus("error", error.message || "老師模式驗證失敗。");
+  }
 });
 
 els.studentModeBtn.addEventListener("click", () => {
@@ -925,6 +963,16 @@ els.linkList.addEventListener("click", async (event) => {
 els.leaveLetterForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
+  const uploadedPdf = getUploadedLeavePdf();
+  const shouldGenerateNewLetter = Boolean(els.forceGenerateLetter.checked);
+  if (uploadedPdf && !shouldGenerateNewLetter) {
+    els.leaveLetterOutput.hidden = true;
+    els.leaveLetterOutput.value = "";
+    setLeaveLetterSource(`來源：你上傳的 PDF（${uploadedPdf.name}），系統未自動生成第二份告假信。`);
+    setStatus("ok", "已優先使用你上傳的 PDF；如需新文字版本，請勾選「仍然生成新文字告假信」。");
+    return;
+  }
+
   const studentName = els.leaveStudentInput.value.trim();
   const startDate = els.leaveStartInput.value;
   const endDate = els.leaveEndInput.value;
@@ -942,7 +990,37 @@ els.leaveLetterForm.addEventListener("submit", (event) => {
 
   els.leaveLetterOutput.hidden = false;
   els.leaveLetterOutput.value = buildLeaveLetter(studentName, startDate, endDate, reason);
+  setLeaveLetterSource("來源：系統即時生成文字告假信（由你明確觸發）。");
   setStatus("ok", "已生成告假信，可直接複製使用。");
+});
+
+els.useUploadedPdfBtn.addEventListener("click", () => {
+  const uploadedPdf = getUploadedLeavePdf();
+  if (!uploadedPdf) {
+    setStatus("error", "請先上傳 PDF 檔案。");
+    return;
+  }
+  els.leaveLetterOutput.hidden = true;
+  els.leaveLetterOutput.value = "";
+  setLeaveLetterSource(`來源：你上傳的 PDF（${uploadedPdf.name}）。`);
+  setStatus("ok", "已選擇使用你上傳的 PDF，系統不會自動生成第二份告假信。");
+});
+
+els.leavePdfInput.addEventListener("change", () => {
+  const uploadedPdf = getUploadedLeavePdf();
+  if (!uploadedPdf) {
+    setLeaveLetterSource("");
+    return;
+  }
+  if (uploadedPdf.type && uploadedPdf.type !== "application/pdf") {
+    els.leavePdfInput.value = "";
+    setLeaveLetterSource("");
+    setStatus("error", "請上傳 PDF 檔案。");
+    return;
+  }
+  els.leaveLetterOutput.hidden = true;
+  els.leaveLetterOutput.value = "";
+  setLeaveLetterSource(`來源：你上傳的 PDF（${uploadedPdf.name}）。預設會優先使用此檔案。`);
 });
 
 window.addEventListener("offline", () => {

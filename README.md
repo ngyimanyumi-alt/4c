@@ -13,12 +13,12 @@
 - 告假信生成器
 - 老師 / 學生模式
 
-## 老師模式 demo 密碼
+## 老師模式驗證（不暴露密碼）
 
-- 老師模式密碼固定為 **`23896299`**
-- 這只是一個**公開前端 demo 的基本防誤觸**
-- **不是安全登入，也不是身份驗證**
-- 正式用途請改用 **Supabase Auth** 或其他真正的登入機制
+- 老師模式密碼不會在前端畫面、回應內容或程式碼中顯示
+- 部署時會把 `TEACHER_MODE_PASSWORD`（Actions Secret）轉成 SHA-256 雜湊後寫入 `config.js`
+- 前端只用雜湊值做比對；如未設定秘密，老師模式會自動停用
+- 正式用途仍建議改用 **Supabase Auth** 或其他真正登入機制
 
 ## Supabase 共享資料說明
 
@@ -58,11 +58,13 @@
 到 **Settings → Secrets and variables → Actions → Secrets** 新增：
 
 - `SUPABASE_ANON_KEY`：Supabase 的 publishable / anon key
+- `TEACHER_MODE_PASSWORD`：老師模式密碼（只存於 Secret，部署時轉為雜湊）
 
 ### 重要
 
 - `SUPABASE_URL` 讀自 **GitHub Actions Variables**
 - `SUPABASE_ANON_KEY` 讀自 **GitHub Actions Secrets**
+- `TEACHER_MODE_PASSWORD` 只在 workflow 內轉換為 `TEACHER_PASSWORD_HASH`
 - **不要提交** `service_role`、secret key 或任何私密金鑰
 - workflow 會保留 `index.html`、`app.js`、`supabase-data.js` 並自動輸出 `config.js`
 
@@ -99,9 +101,10 @@ https://ngyimanyumi-alt.github.io/4c/
 
 ## 本機檢查
 
-這個 repo 目前沒有自動化測試框架；可先做 JavaScript 語法檢查：
+可先做 JavaScript 語法檢查與最小測試：
 
 ```bash
 node --check app.js
 node --check supabase-data.js
+node --test tests/*.test.mjs
 ```
