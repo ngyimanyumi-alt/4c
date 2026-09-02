@@ -406,6 +406,7 @@ function renderDutyCards() {
               <div class="rounded-2xl bg-white/80 px-4 py-3 shadow-sm">
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">值日生 ${index + 1}</p>
                 <p class="mt-2 text-lg font-black text-slate-900">${escapeHtml(student.name || "未安排")}</p>
+                <p class="mt-1 text-sm font-semibold text-slate-600">學號 ${escapeHtml(student.studentNumber || "—")}</p>
               </div>
             `
           )

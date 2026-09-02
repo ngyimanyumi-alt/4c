@@ -25,7 +25,7 @@ create table if not exists public.duty_overrides (
   duty_offset integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint duty_slot_allowed check (duty_slot in ('早會', '黑板', '地面')),
+  constraint duty_slot_allowed check (duty_slot in ('放學')),
   constraint duty_override_unique unique (class_id, duty_date, duty_slot)
 );
 

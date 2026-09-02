@@ -118,7 +118,7 @@ test('duty section keeps a wider horizontal layout while remaining responsive', 
   assert.match(html, /id="dateDisplay" class="mt-3 whitespace-nowrap text-2xl font-black tracking-tight text-slate-900 sm:text-3xl"/);
   assert.match(html, /id="dutyOverrideForm" class="theme-card accent-ring w-full flex-1 rounded-\[1\.5rem\] p-5 md:min-w-\[18rem\] xl:max-w-\[24rem\] 2xl:max-w-none"/);
   assert.match(html, /id="dutyCardGrid" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3"/);
-  assert.match(html, /橫向快速查看三個值日崗位、每崗兩位值日生與放學分工。/);
+  assert.match(html, /查看放學值日安排（兩位值日生及分工）。/);
   assert.match(html, /會按螢幕闊度自動換行/);
 });
 
@@ -147,6 +147,7 @@ test('student and duty quick actions expose teacher-only controls with visible s
   assert.match(app, /cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400/);
   assert.match(app, /buildStudentVisibilityModel/);
   assert.match(app, /buildDutyAssignments/);
+  assert.match(app, /學號 \${escapeHtml\(student\.studentNumber \|\| "—"\)}/);
   assert.match(html, /id="studentSectionTitle"/);
   assert.match(html, /id="studentSectionDescription"/);
 });
@@ -191,15 +192,15 @@ test('demo data provider preserves student numbers and persists absence and duty
     students = await classDataApi.listStudents();
     assert.equal(students.find((student) => student.id === addedStudent.id)?.absentDays, 4);
 
-    await classDataApi.upsertDutyOverride('2026-09-05', '早會', 2);
+    await classDataApi.upsertDutyOverride('2026-09-05', '放學', 2);
     let offsets = await classDataApi.listDutyOverrides();
-    const createdOffset = offsets.find((item) => item.date === '2026-09-05' && item.slot === '早會');
+    const createdOffset = offsets.find((item) => item.date === '2026-09-05' && item.slot === '放學');
     assert.ok(createdOffset);
     assert.equal(createdOffset.offset, 2);
 
     await classDataApi.deleteDutyOverride(createdOffset.id);
     offsets = await classDataApi.listDutyOverrides();
-    assert.equal(offsets.some((item) => item.date === '2026-09-05' && item.slot === '早會'), false);
+    assert.equal(offsets.some((item) => item.date === '2026-09-05' && item.slot === '放學'), false);
   } finally {
     delete global.window;
   }
