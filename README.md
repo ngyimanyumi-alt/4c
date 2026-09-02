@@ -107,6 +107,8 @@ https://ngyimanyumi-alt.github.io/4c/
 
 ```bash
 node --check app.js
+node --check config.example.js
+node --check duty-utils.js
 node --check supabase-data.js
 node --test tests/*.test.mjs
 ```

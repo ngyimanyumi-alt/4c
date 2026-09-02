@@ -151,6 +151,16 @@ test('student and duty quick actions expose teacher-only controls with visible s
   assert.match(html, /id="studentSectionDescription"/);
 });
 
+test('pages workflow publishes helper module and validates all JS modules and tests', () => {
+  const workflow = read('.github/workflows/deploy-pages.yml');
+
+  assert.match(workflow, /Check JavaScript syntax \(all app modules\)/);
+  assert.match(workflow, /for f in index\.html app\.js config\.example\.js duty-utils\.js supabase-data\.js; do/);
+  assert.match(workflow, /for f in app\.js config\.example\.js duty-utils\.js supabase-data\.js; do/);
+  assert.match(workflow, /node --test tests\/\*\.test\.mjs/);
+  assert.match(workflow, /cp \.\/duty-utils\.js \.\/_site\/duty-utils\.js/);
+});
+
 test('demo data provider preserves student numbers and persists absence and duty offset updates', async () => {
   global.window = {
     APP_CONFIG: {
