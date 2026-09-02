@@ -47,6 +47,10 @@ test('duty assignments render one after-school group with two students and five 
       new Set(assignment.students.map((student) => student.id)).size,
       DUTY_STUDENTS_PER_SLOT
     );
+    assert.equal(
+      assignment.students.every((student) => Boolean(student.name) && Number(student.studentNumber) > 0),
+      true
+    );
   });
 
   assert.equal(assignments[0].key, '放學');
