@@ -63,7 +63,8 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         overflow-x: clip;
-        overflow-wrap: anywhere;
+        overflow-wrap: break-word;
+        word-break: normal;
         background:
           radial-gradient(circle at top, rgba(var(--theme-accent), 0.8), transparent 38%),
           linear-gradient(180deg, #fff9fc 0%, #fdf2f8 35%, #f8fafc 100%);
@@ -309,10 +310,10 @@
               </div>
             </div>
 
-            <div class="mt-5 grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)_minmax(0,2fr)] xl:items-start">
-              <div class="soft-gradient accent-ring rounded-[1.5rem] p-5">
+            <div class="mt-5 flex flex-wrap items-start gap-4 2xl:flex-nowrap">
+              <div class="soft-gradient accent-ring w-full flex-1 rounded-[1.5rem] p-5 md:min-w-[16rem] xl:max-w-[20rem] 2xl:max-w-none">
                 <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">日期</p>
-                <p id="dateDisplay" class="mt-3 text-3xl font-black text-slate-900"></p>
+                <p id="dateDisplay" class="mt-3 whitespace-nowrap text-2xl font-black tracking-tight text-slate-900 sm:text-3xl"></p>
                 <div class="mt-3 flex flex-wrap gap-2">
                   <span id="dateTag" class="holiday-pill rounded-full px-3 py-1 text-xs font-bold">
                     載入中
@@ -325,14 +326,14 @@
                 <p id="dateHint" class="mt-4 text-sm leading-6 text-slate-600"></p>
               </div>
 
-              <form id="dutyOverrideForm" class="theme-card accent-ring rounded-[1.5rem] p-5">
+              <form id="dutyOverrideForm" class="theme-card accent-ring w-full flex-1 rounded-[1.5rem] p-5 md:min-w-[18rem] xl:max-w-[24rem] 2xl:max-w-none">
                 <div class="flex items-center justify-between gap-3">
-                  <h3 class="text-lg font-bold text-slate-900">值日偏移設定</h3>
+                  <h3 class="whitespace-nowrap text-lg font-bold text-slate-900">值日偏移設定</h3>
                   <span class="rounded-full accent-bg px-3 py-1 text-xs font-semibold">
                     老師模式
                   </span>
                 </div>
-                <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                <div class="mt-4 grid gap-3 md:grid-cols-3">
                   <input
                     id="dutyDateInput"
                     type="date"
@@ -361,7 +362,7 @@
                 <ul id="dutyOverrideList" class="mt-4 space-y-3"></ul>
               </form>
 
-              <div class="space-y-4">
+              <div class="w-full flex-[1.45] basis-[28rem] space-y-4 md:min-w-[22rem]">
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3 class="text-lg font-bold text-slate-900">今日值日生</h3>
@@ -371,7 +372,7 @@
                     會按螢幕闊度自動換行
                   </span>
                 </div>
-                <div id="dutyCardGrid" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"></div>
+                <div id="dutyCardGrid" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3"></div>
               </div>
             </div>
           </section>

@@ -104,7 +104,8 @@ test('mobile-first readability and layout guardrails are present', () => {
 
   assert.match(html, /max-w-6xl/);
   assert.match(html, /overflow-x:\s*clip/);
-  assert.match(html, /overflow-wrap:\s*anywhere/);
+  assert.match(html, /overflow-wrap:\s*break-word/);
+  assert.match(html, /word-break:\s*normal/);
   assert.match(html, /-webkit-font-smoothing:\s*antialiased/);
   assert.match(html, /lg:max-w-\[30rem\]/);
   assert.match(html, /grid items-start gap-6/);
@@ -113,8 +114,10 @@ test('mobile-first readability and layout guardrails are present', () => {
 test('duty section keeps a wider horizontal layout while remaining responsive', () => {
   const html = read('index.html');
 
-  assert.match(html, /xl:grid-cols-\[minmax\(0,0\.9fr\)_minmax\(0,1\.1fr\)_minmax\(0,2fr\)\]/);
-  assert.match(html, /id="dutyCardGrid" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"/);
+  assert.match(html, /mt-5 flex flex-wrap items-start gap-4 2xl:flex-nowrap/);
+  assert.match(html, /id="dateDisplay" class="mt-3 whitespace-nowrap text-2xl font-black tracking-tight text-slate-900 sm:text-3xl"/);
+  assert.match(html, /id="dutyOverrideForm" class="theme-card accent-ring w-full flex-1 rounded-\[1\.5rem\] p-5 md:min-w-\[18rem\] xl:max-w-\[24rem\] 2xl:max-w-none"/);
+  assert.match(html, /id="dutyCardGrid" class="grid gap-4 md:grid-cols-2 2xl:grid-cols-3"/);
   assert.match(html, /橫向快速查看三個值日崗位與已套用偏移。/);
   assert.match(html, /會按螢幕闊度自動換行/);
 });
