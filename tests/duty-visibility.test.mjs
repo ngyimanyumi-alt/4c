@@ -37,11 +37,10 @@ test('student mode only exposes absent-student summary while teacher mode keeps 
   assert.equal(teacherView.students[0].studentNumber, 1);
 });
 
-test('duty assignments only include one after-school group with two students', () => {
+test('duty assignments render one after-school group with two students and five tasks', () => {
   const assignments = buildDutyAssignments(students, [], '2026-01-01');
 
   assert.equal(assignments.length, 1);
-  assert.equal(assignments[0].key, '放學後');
   assignments.forEach((assignment) => {
     assert.equal(assignment.students.length, DUTY_STUDENTS_PER_SLOT);
     assert.equal(
@@ -54,6 +53,7 @@ test('duty assignments only include one after-school group with two students', (
     );
   });
 
+  assert.equal(assignments[0].key, '放學');
   assert.deepEqual(
     assignments.map((assignment) => assignment.students.map((student) => student.name)),
     [['陳大文', '李小美']]
@@ -64,7 +64,7 @@ test('duty assignments only include one after-school group with two students', (
     visibleTasks.filter((task) =>
       ['扔垃圾', '掃地', '擦白板', '檢查櫃桶', '檢查枱凳泊好'].includes(task)
     ),
-    ['扔垃圾', '擦白板', '掃地', '檢查櫃桶', '檢查枱凳泊好']
+    ['扔垃圾', '掃地', '擦白板', '檢查櫃桶', '檢查枱凳泊好']
   );
 });
 
@@ -79,7 +79,7 @@ test('absent duty students are automatically skipped and manual offsets still ap
 
   const offsetAssignments = buildDutyAssignments(
     absentStudents,
-    [{ id: 1, date: '2026-01-01', slot: '放學後', offset: 2 }],
+    [{ id: 1, date: '2026-01-01', slot: '放學', offset: 2 }],
     '2026-01-01'
   );
   assert.deepEqual(offsetAssignments[0].students.map((student) => student.name), ['王俊傑', '何詠欣']);

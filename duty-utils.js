@@ -2,11 +2,11 @@ export const DUTY_STUDENTS_PER_SLOT = 2;
 
 export const dutySlots = [
   {
-    key: "放學後",
+    key: "放學",
     icon: "fa-broom",
-    description: "只安排一個放學後值日組別，兩位同學輪值分工。",
+    description: "放學後值日安排，顯示兩位值日生及其分工。",
     taskGroups: [
-      ["扔垃圾", "擦白板", "掃地"],
+      ["扔垃圾", "掃地", "擦白板"],
       ["檢查櫃桶", "檢查枱凳泊好"]
     ]
   }

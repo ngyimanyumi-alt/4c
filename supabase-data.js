@@ -34,7 +34,7 @@ const DEFAULT_DATA = Object.freeze({
     { id: 2, title: "Google Classroom", url: "https://classroom.google.com/", icon: "📚" },
     { id: 3, title: "Zoom", url: "https://zoom.us/", icon: "💻" }
   ],
-  manualOffsets: [{ id: 1, date: "2026-09-02", slot: "黑板", offset: 1 }]
+  manualOffsets: [{ id: 1, date: "2026-09-02", slot: "放學", offset: 1 }]
 });
 
 function cloneDefaults() {
