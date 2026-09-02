@@ -224,7 +224,7 @@ function applyTheme(themeName) {
     const isActive = button.dataset.theme === state.theme;
     button.classList.toggle("active", isActive);
     button.classList.toggle("bg-white/20", !isActive);
-    button.classList.toggle("text-white", !isActive);
+    button.classList.toggle("text-slate-900", !isActive);
     button.classList.toggle("bg-white/90", isActive);
     button.classList.toggle("text-slate-800", isActive);
   });
@@ -296,7 +296,7 @@ function ensureTeacherOrWarn() {
 
 function setTeacherModeState(type, text) {
   const styles = {
-    info: "border-white/25 bg-white/10 text-white",
+    info: "border-slate-200/80 bg-white/75 text-slate-700",
     ok: "border-emerald-200/70 bg-emerald-50 text-emerald-800",
     error: "border-rose-200/80 bg-rose-50 text-rose-800",
     warn: "border-amber-200/80 bg-amber-50 text-amber-900"
