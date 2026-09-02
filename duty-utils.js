@@ -2,25 +2,13 @@ export const DUTY_STUDENTS_PER_SLOT = 2;
 
 export const dutySlots = [
   {
-    key: "早會",
-    icon: "fa-sun",
-    description: "保留原有早會輪值位，現會顯示兩位值日生與放學分工。",
-    taskGroups: [
-      ["扔垃圾", "檢查櫃桶"],
-      ["檢查枱凳泊好"]
-    ]
-  },
-  {
-    key: "黑板",
-    icon: "fa-chalkboard",
-    description: "保留黑板輪值位，放學時分工處理白板與課室巡查。",
-    taskGroups: [["擦白板"], ["協助檢查白板區"]]
-  },
-  {
-    key: "地面",
+    key: "放學後",
     icon: "fa-broom",
-    description: "保留地面輪值位，放學時負責地面清潔與收尾。",
-    taskGroups: [["掃地"], ["協助檢查地面整潔"]]
+    description: "只安排一個放學後值日組別，兩位同學輪值分工。",
+    taskGroups: [
+      ["扔垃圾", "擦白板", "掃地"],
+      ["檢查櫃桶", "檢查枱凳泊好"]
+    ]
   }
 ];
 
