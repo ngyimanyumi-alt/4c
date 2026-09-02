@@ -1,10 +1,5 @@
+import { buildDutyAssignments, buildStudentVisibilityModel, dutySlots } from "./duty-utils.js";
 import { classDataApi, subscribeToChanges } from "./supabase-data.js";
-
-const dutySlots = [
-  { key: "早會", icon: "fa-sun", description: "早上問好、點名與班務提示" },
-  { key: "黑板", icon: "fa-chalkboard", description: "檢查黑板、粉筆與板擦" },
-  { key: "地面", icon: "fa-broom", description: "留意地面整潔與座位周邊" }
-];
 
 const themes = {
   pink: {
@@ -124,6 +119,8 @@ const els = {
   dutySlotInput: document.getElementById("dutySlotInput"),
   dutyOffsetInput: document.getElementById("dutyOffsetInput"),
   dutyOverrideList: document.getElementById("dutyOverrideList"),
+  studentSectionTitle: document.getElementById("studentSectionTitle"),
+  studentSectionDescription: document.getElementById("studentSectionDescription"),
   studentStats: document.getElementById("studentStats"),
   studentForm: document.getElementById("studentForm"),
   studentNoInput: document.getElementById("studentNoInput"),
@@ -267,22 +264,8 @@ function getOverride(dateValue, slot) {
   return state.manualOffsets.find((item) => item.date === dateValue && item.slot === slot) || null;
 }
 
-function getDutyStudent(slot, dateValue) {
-  if (!state.studentList.length) {
-    return "（未有學生）";
-  }
-
-  const slotIndex = dutySlots.findIndex((item) => item.key === slot);
-  const currentDate = parseDateValue(dateValue);
-  const referenceDate = new Date(2026, 0, 1);
-  const dayOffset = Math.floor((currentDate - referenceDate) / (1000 * 60 * 60 * 24));
-  const override = getOverride(dateValue, slot);
-  const customOffset = override ? Number(override.offset) : 0;
-  const index =
-    ((dayOffset + slotIndex + customOffset) % state.studentList.length + state.studentList.length) %
-    state.studentList.length;
-
-  return state.studentList[index].name;
+function getDutyAssignmentsForSelectedDate() {
+  return buildDutyAssignments(state.studentList, state.manualOffsets, state.selectedDate, dutySlots);
 }
 
 function ensureTeacherOrWarn() {
@@ -364,6 +347,10 @@ function updateModeUi() {
     button.classList.toggle("opacity-60", !state.isTeacher);
     button.classList.toggle("cursor-not-allowed", !state.isTeacher);
   });
+
+  els.studentStats.hidden = !state.isTeacher;
+  els.studentForm.hidden = !state.isTeacher;
+  els.bulkImportForm.hidden = !state.isTeacher;
 }
 
 function renderConnectionNotice() {
@@ -411,24 +398,55 @@ function renderDatePanel() {
 function renderDutyCards() {
   els.dutyCardGrid.innerHTML = "";
 
-  dutySlots.forEach((slot) => {
-    const override = getOverride(state.selectedDate, slot.key);
-    const studentName = getDutyStudent(slot.key, state.selectedDate);
+  getDutyAssignmentsForSelectedDate().forEach((assignment) => {
+    const students =
+      assignment.students.length > 0
+        ? assignment.students.map(
+            (student, index) => `
+              <div class="rounded-2xl bg-white/80 px-4 py-3 shadow-sm">
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">值日生 ${index + 1}</p>
+                <p class="mt-2 text-lg font-black text-slate-900">${escapeHtml(student.name || "未安排")}</p>
+              </div>
+            `
+          )
+        : [
+            '<div class="rounded-2xl bg-white/80 px-4 py-3 text-sm font-semibold text-slate-500 shadow-sm">目前沒有可值日學生</div>'
+          ];
+    const taskGroups = assignment.taskGroups
+      .map(
+        (tasks, index) => `
+          <div class="rounded-2xl border border-white/70 bg-white/70 px-4 py-3">
+            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">值日生 ${index + 1} 分工</p>
+            <ul class="mt-2 space-y-1 text-sm leading-6 text-slate-600">
+              ${tasks.map((task) => `<li>• ${escapeHtml(task)}</li>`).join("")}
+            </ul>
+          </div>
+        `
+      )
+      .join("");
     const article = document.createElement("article");
     article.className = "duty-card rounded-[1.5rem] p-5 shadow-sm";
     article.innerHTML = `
       <div class="flex items-center justify-between gap-3">
         <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl accent-bg text-xl">
-          <i class="fa-solid ${slot.icon}"></i>
+          <i class="fa-solid ${assignment.icon}"></i>
         </span>
         <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 shadow-sm">
-          ${escapeHtml(slot.key)}
+          ${escapeHtml(assignment.key)}
         </span>
       </div>
-      <h3 class="mt-4 text-xl font-black text-slate-900">${escapeHtml(studentName)}</h3>
-      <p class="mt-2 text-sm leading-6 text-slate-600">${escapeHtml(slot.description)}</p>
+      <div class="mt-4 grid gap-3">${students.join("")}</div>
+      <p class="mt-3 text-sm leading-6 text-slate-600">${escapeHtml(assignment.description)}</p>
+      <div class="mt-4 space-y-3">
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">放學值日分工</p>
+        <div class="grid gap-3">${taskGroups}</div>
+      </div>
       <p class="mt-4 text-xs leading-5 text-slate-500">
-        ${override ? `已套用手動偏移：${escapeHtml(override.offset)}` : "未設定手動偏移，使用自動輪值。"}
+        ${
+          getOverride(state.selectedDate, assignment.key)
+            ? `已套用手動偏移：${escapeHtml(getOverride(state.selectedDate, assignment.key).offset)}`
+            : "未設定手動偏移，使用自動輪值。"
+        }
       </p>
     `;
     els.dutyCardGrid.append(article);
@@ -474,6 +492,11 @@ function renderDutyOverrides() {
 }
 
 function renderStudentStats() {
+  if (!state.isTeacher) {
+    els.studentStats.innerHTML = "";
+    return;
+  }
+
   const totalStudents = state.studentList.length;
   const totalAbsentDays = state.studentList.reduce((sum, item) => sum + Number(item.absentDays || 0), 0);
   const highestAbsent =
@@ -501,14 +524,38 @@ function renderStudentStats() {
 }
 
 function renderStudents() {
-  if (!state.studentList.length) {
+  const visibility = buildStudentVisibilityModel(state.studentList, state.isTeacher);
+
+  els.studentSectionTitle.textContent = state.isTeacher ? "學生名單與缺席統計" : "缺席學生";
+  els.studentSectionDescription.textContent = state.isTeacher
+    ? "支援單個新增與批量匯入，並同步缺席統計。"
+    : "學生模式只顯示有缺席的學生姓名及缺席日數。";
+
+  if (!visibility.students.length) {
     els.studentList.innerHTML =
-      '<li class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">目前沒有學生資料，可在老師模式新增或批量匯入。</li>';
+      state.isTeacher
+        ? '<li class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">目前沒有學生資料，可在老師模式新增或批量匯入。</li>'
+        : '<li class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">目前沒有缺席學生。</li>';
+    return;
+  }
+
+  if (!state.isTeacher) {
+    els.studentList.innerHTML = "";
+    visibility.students.forEach((student) => {
+      const li = document.createElement("li");
+      li.className =
+        "flex items-center justify-between gap-3 rounded-[1.5rem] border border-slate-100 bg-white px-4 py-4 shadow-sm";
+      li.innerHTML = `
+        <h3 class="text-lg font-bold text-slate-900">${escapeHtml(student.name)}</h3>
+        <span class="rounded-full accent-bg px-3 py-1 text-sm font-bold">${escapeHtml(student.absentDays)} 天</span>
+      `;
+      els.studentList.append(li);
+    });
     return;
   }
 
   els.studentList.innerHTML = "";
-  state.studentList.forEach((student) => {
+  visibility.students.forEach((student) => {
     const absentDays = Math.max(0, Number(student.absentDays) || 0);
     const isTeacher = state.isTeacher;
     const minusDisabled = !isTeacher || absentDays === 0;
