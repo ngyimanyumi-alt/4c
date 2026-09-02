@@ -444,6 +444,7 @@ function renderDutyOverrides() {
 
   els.dutyOverrideList.innerHTML = "";
   state.manualOffsets.forEach((item) => {
+    const deleteDisabled = !state.isTeacher;
     const li = document.createElement("li");
     li.className =
       "flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between";
@@ -456,10 +457,16 @@ function renderDutyOverrides() {
         type="button"
         data-act="duty-delete"
         data-id="${item.id}"
-        class="rounded-2xl border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
-        ${!state.isTeacher ? "disabled" : ""}
+        class="rounded-2xl border px-4 py-2 text-sm font-semibold transition ${
+          deleteDisabled
+            ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+            : "border-rose-200 bg-white text-rose-600 hover:bg-rose-50"
+        }"
+        title="${deleteDisabled ? "僅限老師模式刪除此設定" : "刪除此值日偏移設定"}"
+        aria-label="刪除 ${escapeHtml(item.date)} ${escapeHtml(item.slot)} 的值日偏移設定"
+        ${deleteDisabled ? "disabled" : ""}
       >
-        刪除
+        DEL / 刪除
       </button>
     `;
     els.dutyOverrideList.append(li);
@@ -502,44 +509,76 @@ function renderStudents() {
 
   els.studentList.innerHTML = "";
   state.studentList.forEach((student) => {
+    const absentDays = Math.max(0, Number(student.absentDays) || 0);
+    const isTeacher = state.isTeacher;
+    const minusDisabled = !isTeacher || absentDays === 0;
+    const plusDisabled = !isTeacher;
+    const deleteDisabled = !isTeacher;
     const li = document.createElement("li");
     li.className =
       "flex flex-col gap-3 rounded-[1.5rem] border border-slate-100 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between";
     li.innerHTML = `
       <div>
         <div class="flex flex-wrap items-center gap-2">
-          <span class="rounded-full accent-bg px-3 py-1 text-xs font-bold">#${escapeHtml(
+          <span class="rounded-full accent-bg px-3 py-1 text-xs font-bold">學號 ${escapeHtml(
             student.studentNumber
           )}</span>
           <h3 class="text-lg font-bold text-slate-900">${escapeHtml(student.name)}</h3>
         </div>
-        <p class="mt-2 text-sm text-slate-500">缺席統計：${escapeHtml(student.absentDays)} 天</p>
+        <p class="mt-2 text-sm text-slate-500">缺席統計：${escapeHtml(absentDays)} 天</p>
       </div>
-      <div class="flex flex-wrap gap-2">
-        <button
-          type="button"
-          data-act="absent-minus"
-          data-id="${student.id}"
-          class="rounded-2xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-          ${!state.isTeacher ? "disabled" : ""}
-        >
-          -1
-        </button>
-        <button
-          type="button"
-          data-act="absent-plus"
-          data-id="${student.id}"
-          class="rounded-2xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-          ${!state.isTeacher ? "disabled" : ""}
-        >
-          +1
-        </button>
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="inline-flex items-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <button
+            type="button"
+            data-act="absent-minus"
+            data-id="${student.id}"
+            class="h-10 w-10 border-r border-slate-200 text-base font-bold transition ${
+              minusDisabled
+                ? "cursor-not-allowed bg-slate-100 text-slate-400"
+                : "bg-white text-slate-700 hover:bg-slate-50"
+            }"
+            title="${
+              !isTeacher
+                ? "僅限老師模式調整缺席天數"
+                : absentDays === 0
+                  ? "缺席統計已經是 0 天"
+                  : `減少 ${escapeHtml(student.name)} 的缺席天數`
+            }"
+            aria-label="減少 ${escapeHtml(student.name)} 的缺席天數"
+            ${minusDisabled ? "disabled" : ""}
+          >
+            −
+          </button>
+          <span class="px-3 text-sm font-semibold text-slate-600">${escapeHtml(absentDays)} 天</span>
+          <button
+            type="button"
+            data-act="absent-plus"
+            data-id="${student.id}"
+            class="h-10 w-10 border-l border-slate-200 text-base font-bold transition ${
+              plusDisabled
+                ? "cursor-not-allowed bg-slate-100 text-slate-400"
+                : "bg-white text-slate-700 hover:bg-slate-50"
+            }"
+            title="${isTeacher ? `增加 ${escapeHtml(student.name)} 的缺席天數` : "僅限老師模式調整缺席天數"}"
+            aria-label="增加 ${escapeHtml(student.name)} 的缺席天數"
+            ${plusDisabled ? "disabled" : ""}
+          >
+            +
+          </button>
+        </div>
         <button
           type="button"
           data-act="student-delete"
           data-id="${student.id}"
-          class="rounded-2xl border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
-          ${!state.isTeacher ? "disabled" : ""}
+          class="rounded-2xl border px-3 py-2 text-sm font-semibold transition ${
+            deleteDisabled
+              ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+              : "border-rose-200 bg-white text-rose-600 hover:bg-rose-50"
+          }"
+          title="${isTeacher ? `刪除學生 ${escapeHtml(student.name)}` : "僅限老師模式刪除學生資料"}"
+          aria-label="刪除學生 ${escapeHtml(student.name)}"
+          ${deleteDisabled ? "disabled" : ""}
         >
           刪除
         </button>

@@ -110,6 +110,15 @@ test('mobile-first readability and layout guardrails are present', () => {
   assert.match(html, /grid items-start gap-6/);
 });
 
+test('duty section keeps a wider horizontal layout while remaining responsive', () => {
+  const html = read('index.html');
+
+  assert.match(html, /xl:grid-cols-\[minmax\(0,0\.9fr\)_minmax\(0,1\.1fr\)_minmax\(0,2fr\)\]/);
+  assert.match(html, /id="dutyCardGrid" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"/);
+  assert.match(html, /橫向快速查看三個值日崗位與已套用偏移。/);
+  assert.match(html, /會按螢幕闊度自動換行/);
+});
+
 test('header theme controls and mode card keep dark text on light surfaces', () => {
   const app = read('app.js');
   const html = read('index.html');
@@ -120,4 +129,60 @@ test('header theme controls and mode card keep dark text on light surfaces', () 
   assert.match(html, /text-xs font-bold uppercase tracking-\[0\.3em\] text-slate-600/);
   assert.match(html, /text-sm font-medium leading-6 text-slate-700/);
   assert.match(html, /id="teacherModeState"[\s\S]*text-slate-700/);
+});
+
+test('student and duty quick actions expose teacher-only controls with visible student numbers', () => {
+  const app = read('app.js');
+
+  assert.match(app, /學號 \${escapeHtml\(/);
+  assert.match(app, /DEL \/ 刪除/);
+  assert.match(app, /data-act="absent-minus"/);
+  assert.match(app, /data-act="absent-plus"/);
+  assert.match(app, /僅限老師模式調整缺席天數/);
+  assert.match(app, /缺席統計已經是 0 天/);
+  assert.match(app, /cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400/);
+});
+
+test('demo data provider preserves student numbers and persists absence and duty offset updates', async () => {
+  global.window = {
+    APP_CONFIG: {
+      SUPABASE_URL: '',
+      SUPABASE_ANON_KEY: '',
+      CLASS_ID: '4C'
+    },
+    supabase: undefined,
+    crypto: webcrypto,
+    TextEncoder
+  };
+
+  try {
+    const moduleUrl = `${pathToFileURL(join(root, 'supabase-data.js')).href}?t=${Date.now()}`;
+    const { classDataApi } = await import(moduleUrl);
+
+    const initialStudents = await classDataApi.listStudents();
+    assert.equal(initialStudents.every((student) => Number(student.studentNumber) > 0), true);
+
+    const addedStudent = await classDataApi.addStudent(99, '測試學生');
+    assert.equal(addedStudent.studentNumber, 99);
+
+    await classDataApi.updateStudentAbsentDays(addedStudent.id, -3);
+    let students = await classDataApi.listStudents();
+    assert.equal(students.find((student) => student.id === addedStudent.id)?.absentDays, 0);
+
+    await classDataApi.updateStudentAbsentDays(addedStudent.id, 4);
+    students = await classDataApi.listStudents();
+    assert.equal(students.find((student) => student.id === addedStudent.id)?.absentDays, 4);
+
+    await classDataApi.upsertDutyOverride('2026-09-05', '早會', 2);
+    let offsets = await classDataApi.listDutyOverrides();
+    const createdOffset = offsets.find((item) => item.date === '2026-09-05' && item.slot === '早會');
+    assert.ok(createdOffset);
+    assert.equal(createdOffset.offset, 2);
+
+    await classDataApi.deleteDutyOverride(createdOffset.id);
+    offsets = await classDataApi.listDutyOverrides();
+    assert.equal(offsets.some((item) => item.date === '2026-09-05' && item.slot === '早會'), false);
+  } finally {
+    delete global.window;
+  }
 });
