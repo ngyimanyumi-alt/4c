@@ -83,3 +83,18 @@ test('absent duty students are automatically skipped and manual offsets still ap
   );
   assert.deepEqual(offsetAssignments[0].students.map((student) => student.name), ['王俊傑', '何詠欣']);
 });
+
+test('students become eligible for duty assignment again when absence returns to zero', () => {
+  const absentStudents = students.map((student) =>
+    student.id === 1 ? { ...student, absentDays: 1 } : student
+  );
+  const recoveredStudents = absentStudents.map((student) =>
+    student.id === 1 ? { ...student, absentDays: 0 } : student
+  );
+
+  const absentAssignments = buildDutyAssignments(absentStudents, [], '2026-01-01');
+  const recoveredAssignments = buildDutyAssignments(recoveredStudents, [], '2026-01-01');
+
+  assert.equal(absentAssignments.flatMap((assignment) => assignment.students).some((student) => student.id === 1), false);
+  assert.deepEqual(recoveredAssignments[0].students.map((student) => student.name), ['陳大文', '李小美']);
+});

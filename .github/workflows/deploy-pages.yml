@@ -30,17 +30,18 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Check JavaScript syntax (app.js, supabase-data.js)
+      - name: Check JavaScript syntax (all app modules)
         run: |
           echo "▶ Checking JavaScript syntax..."
-          node --check app.js
-          node --check supabase-data.js
+          for f in app.js config.example.js duty-utils.js supabase-data.js; do
+            node --check "$f"
+          done
           echo "✅ Syntax OK"
 
       - name: Run security & UI unit tests
         run: |
           echo "▶ Running unit tests..."
-          node --test tests/ui-security.test.mjs
+          node --test tests/*.test.mjs
           echo "✅ Tests passed"
 
       - name: Validate workflow YAML syntax
@@ -96,7 +97,7 @@ jobs:
       - name: Verify required source files exist
         run: |
           echo "▶ Checking required source files..."
-          for f in index.html app.js supabase-data.js config.example.js; do
+          for f in index.html app.js config.example.js duty-utils.js supabase-data.js; do
             [ -f "$f" ] && echo "  ✅ $f" || { echo "  ❌ $f missing"; exit 1; }
           done
 
@@ -128,6 +129,7 @@ jobs:
           mkdir -p ./_site
           cp ./index.html ./_site/index.html
           cp ./app.js ./_site/app.js
+          cp ./duty-utils.js ./_site/duty-utils.js
           cp ./supabase-data.js ./_site/supabase-data.js
 
           python3 - <<'PY'
