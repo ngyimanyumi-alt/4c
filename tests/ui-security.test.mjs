@@ -109,3 +109,15 @@ test('mobile-first readability and layout guardrails are present', () => {
   assert.match(html, /lg:max-w-\[30rem\]/);
   assert.match(html, /grid items-start gap-6/);
 });
+
+test('header theme controls and mode card keep dark text on light surfaces', () => {
+  const app = read('app.js');
+  const html = read('index.html');
+
+  assert.match(app, /button\.classList\.toggle\("text-slate-900", !isActive\)/);
+  assert.doesNotMatch(app, /button\.classList\.toggle\("text-white", !isActive\)/);
+  assert.match(app, /info:\s*"border-slate-200\/80 bg-white\/75 text-slate-700"/);
+  assert.match(html, /text-xs font-bold uppercase tracking-\[0\.3em\] text-slate-600/);
+  assert.match(html, /text-sm font-medium leading-6 text-slate-700/);
+  assert.match(html, /id="teacherModeState"[\s\S]*text-slate-700/);
+});
